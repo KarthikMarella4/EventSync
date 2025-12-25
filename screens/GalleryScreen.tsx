@@ -1,27 +1,7 @@
 
 import React, { useState } from 'react';
 import { GALLERY_PHOTOS } from '../constants';
-import { GoogleGenAI } from "@google/genai";
-
 const GalleryScreen: React.FC = () => {
-  const [isGeneratingRecap, setIsGeneratingRecap] = useState(false);
-  const [recapText, setRecapText] = useState<string | null>(null);
-
-  const generateRecap = async () => {
-    setIsGeneratingRecap(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: "Write a short, engaging social media recap for an event called 'Summer Music Festival 2024' that happened in Austin, TX. Mention it was vibrant and full of energy.",
-      });
-      setRecapText(response.text || "What a night! The energy was electric.");
-    } catch (error) {
-      console.error("Recap generation failed", error);
-    } finally {
-      setIsGeneratingRecap(false);
-    }
-  };
 
   return (
     <div className="flex flex-col h-full bg-white pb-28">
@@ -40,18 +20,6 @@ const GalleryScreen: React.FC = () => {
       </header>
 
       {/* AI Recap Box */}
-      {recapText && (
-        <div className="m-4 p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-blue-100 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="material-symbols-outlined text-blue-600 text-sm">auto_awesome</span>
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">AI Recap</span>
-          </div>
-          <p className="text-sm text-slate-700 italic leading-relaxed">"{recapText}"</p>
-          <button className="mt-3 text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline">
-            <span className="material-symbols-outlined text-[14px]">content_copy</span> Copy to clipboard
-          </button>
-        </div>
-      )}
 
       {/* Stats */}
       <section className="flex gap-3 px-4 py-4 w-full">
@@ -63,17 +31,6 @@ const GalleryScreen: React.FC = () => {
           <p className="text-text-main text-2xl font-bold leading-tight">452</p>
           <p className="text-text-muted text-[10px] font-medium">Photos uploaded</p>
         </div>
-        <button 
-          onClick={generateRecap}
-          disabled={isGeneratingRecap}
-          className="flex flex-1 flex-col gap-1 rounded-xl bg-blue-600 p-3 items-center text-center shadow-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-        >
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-white text-xl">magic_button</span>
-            <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Recap</p>
-          </div>
-          <p className="text-white text-xs font-bold mt-1">{isGeneratingRecap ? 'Magic...' : 'Generate AI Story'}</p>
-        </button>
       </section>
 
       {/* Filter Tabs */}

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { USER_PROFILE } from '../constants'; // Keeping for stats currently
 
 const ProfileScreen: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
@@ -68,7 +68,9 @@ const ProfileScreen: React.FC = () => {
         throw updateError;
       }
 
-      alert('Avatar updated! Reload to see changes.');
+      // Refresh profile to update UI instantly
+      await refreshProfile();
+      alert('Avatar updated successfully!');
 
     } catch (error: any) {
       alert(error.message);
@@ -150,7 +152,7 @@ const ProfileScreen: React.FC = () => {
 
       alert('Profile updated successfully!');
       setIsEditing(false);
-      window.location.reload(); // Simple reload to refresh context
+      await refreshProfile();
     } catch (error: any) {
       alert(`Error updating profile: ${error.message}`);
     } finally {
@@ -170,8 +172,7 @@ const ProfileScreen: React.FC = () => {
 
       if (error) throw error;
 
-      alert('Profile picture removed.');
-      window.location.reload();
+      await refreshProfile();
     } catch (error: any) {
       alert(error.message);
     } finally {

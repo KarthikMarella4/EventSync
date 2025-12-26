@@ -11,6 +11,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     isLoading: boolean;
     signInWithGoogle: () => Promise<void>;
+    refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -160,8 +161,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await supabase.auth.signOut();
     };
 
+    const refreshProfile = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            const domainUser = await mapSupabaseUserToDomainUser(session.user);
+            setUser(domainUser);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, signInWithPassword, signUp, logout, isLoading, signInWithGoogle }}>
+        <AuthContext.Provider value={{ user, signInWithPassword, signUp, logout, isLoading, signInWithGoogle, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );

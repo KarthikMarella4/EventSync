@@ -28,39 +28,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
-                mapSupabaseUserToDomainUser(session.user).then(setUser);
+                mapSupabaseUserToDomainUser(session.user)
+                    .then(setUser)
+                    .catch(err => {
+                        console.error('User mapping failed', err);
+                        setUser({ id: session.user.id, name: 'User', email: session.user.email || '', isAuthenticated: true });
+                    })
+                    .finally(() => setIsLoading(false));
             } else {
                 setUser(null);
+                setIsLoading(false);
             }
         }).catch((err) => {
             console.error('Session check failed', err);
             setUser(null);
+            setIsLoading(false);
         }).finally(() => {
             clearTimeout(timeoutId);
-            setIsLoading(false);
         });
 
         // Listen for changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user) {
-                const domainUser = await mapSupabaseUserToDomainUser(session.user);
-                setUser(domainUser);
-            } else {
-                setUser(null);
+            try {
+                if (session?.user) {
+                    const domainUser = await mapSupabaseUserToDomainUser(session.user);
+                    setUser(domainUser);
+                } else {
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error('Auth state change error:', error);
+                if (session?.user) setUser({ id: session.user.id, name: 'User', email: session.user.email || '', isAuthenticated: true });
+                else setUser(null);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
     const mapSupabaseUserToDomainUser = async (sbUser: SupabaseUser): Promise<User> => {
-        // Try to fetch profile from 'profiles' table
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('full_name, avatar_url, occupation')
-            .eq('id', sbUser.id)
-            .single();
+        // Try to fetch profile from 'profiles' table with a timeout
+        let data: any = null;
+        try {
+            const fetchProfile = supabase
+                .from('profiles')
+                .select('full_name, avatar_url, occupation')
+                .eq('id', sbUser.id)
+                .single();
+
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
+
+            const result: any = await Promise.race([fetchProfile, timeout]);
+            data = result.data;
+        } catch (e) {
+            console.warn('Profile fetch timed out or failed, using metadata defaults', e);
+        }
 
         // Fallback to metadata or defaults if no profile row yet
         const name = data?.full_name || sbUser.user_metadata?.full_name || sbUser.email?.split('@')[0] || 'User';
@@ -113,10 +137,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signInWithPassword = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signInWithPassword({
+        const signInPromise = supabase.auth.signInWithPassword({
             email,
             password,
         });
+
+        const timeoutPromise = new Promise<{ error: any }>((resolve) =>
+            setTimeout(() => resolve({ error: { message: 'Login timed out. Please check your connection.' } }), 8000)
+        );
+
+        const { error } = await Promise.race([signInPromise, timeoutPromise]) as any;
+
         if (error) throw error;
     };
 

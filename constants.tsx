@@ -16,7 +16,7 @@ export const USER_PROFILE = {
 export const FEATURED_EVENTS: Event[] = [
   {
     id: 'f1',
-    title: 'Tech Summit 2024',
+    title: 'Tech Summit 2026',
     date: 'Oct 24',
     time: '8 PM',
     location: 'San Francisco',
@@ -46,8 +46,8 @@ export const RECOMMENDED_EVENTS: Event[] = [
     distance: '0.8 mi',
     attendeesCount: 12,
     attendeesAvatars: [
-        'https://picsum.photos/seed/u1/100',
-        'https://picsum.photos/seed/u2/100'
+      'https://picsum.photos/seed/u1/100',
+      'https://picsum.photos/seed/u2/100'
     ]
   },
   {

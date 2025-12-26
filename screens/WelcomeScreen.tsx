@@ -24,7 +24,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin, onGoToSignUp
                     </div>
                     <div>
                         <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Upcoming</p>
-                        <p className="text-xs font-bold text-text-main">Tech Summit 2024</p>
+                        <p className="text-xs font-bold text-text-main">Tech Summit 2026</p>
                     </div>
                 </div>
             </div>

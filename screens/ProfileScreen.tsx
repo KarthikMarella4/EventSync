@@ -158,6 +158,27 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
+  const deleteAvatar = async () => {
+    try {
+      if (!confirm('Are you sure you want to remove your profile picture?')) return;
+
+      setUploading(true);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+
+      alert('Profile picture removed.');
+      window.location.reload();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="bg-surface pb-28 min-h-screen">
       {/* Header */}
@@ -184,54 +205,81 @@ const ProfileScreen: React.FC = () => {
 
       {/* Profile Info */}
       <div className="flex flex-col items-center pt-8 pb-10 px-6 bg-white">
-        <div className="relative mb-5 group">
-          <div className="h-32 w-32 rounded-full p-1 bg-white shadow-lg ring-1 ring-black/5">
-            <div className="w-full h-full rounded-full bg-cover bg-center" style={{ backgroundImage: `url("${user?.avatar}")` }} />
+        <div className="relative mb-8 group">
+          <div className="h-32 w-32 rounded-full p-1 bg-white shadow-lg ring-1 ring-black/5 overflow-hidden mx-auto">
+            {user?.avatar ? (
+              <div className="w-full h-full rounded-full bg-cover bg-center" style={{ backgroundImage: `url("${user.avatar}")` }} />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="material-symbols-outlined text-4xl text-gray-400">person</span>
+              </div>
+            )}
           </div>
 
-          <label className="absolute bottom-1 right-1 bg-black text-white p-2 rounded-full border-4 border-white flex items-center justify-center shadow-md cursor-pointer hover:bg-gray-800 transition-colors">
-            {uploading ? (
-              <span className="size-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-            ) : (
-              <span className="material-symbols-outlined text-[18px]">camera_alt</span>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={uploadAvatar}
-              disabled={uploading}
-              className="hidden"
-            />
-          </label>
+          {isEditing && (
+            <div className="flex gap-4 justify-center mt-6">
+              <label className="flex flex-col items-center gap-1 cursor-pointer group/btn">
+                <div className="size-12 rounded-full bg-black text-white flex items-center justify-center shadow-md group-hover/btn:bg-gray-800 transition-colors">
+                  {uploading ? (
+                    <span className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  ) : (
+                    <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold text-black uppercase tracking-wide">Change</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={uploadAvatar}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+
+              {user?.avatar && (
+                <button
+                  onClick={deleteAvatar}
+                  className="flex flex-col items-center gap-1 group/btn"
+                >
+                  <div className="size-12 rounded-full bg-white border border-gray-200 text-red-500 flex items-center justify-center shadow-sm group-hover/btn:bg-red-50 group-hover/btn:border-red-100 transition-colors">
+                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide">Remove</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-col items-center text-center space-y-3 w-full max-w-xs">
+        <div className="flex flex-col items-center w-full max-w-sm px-4">
           {isEditing ? (
-            <div className="w-full space-y-3 animate-in fade-in zoom-in-95 duration-200">
-              <div className='text-left w-full'>
-                <label className="text-xs font-bold text-gray-500 uppercase ml-2">Full Name</label>
+            <div className="w-full space-y-5 animate-in fade-in zoom-in-95 duration-300">
+              <div className='w-full'>
+                <label className="block text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-2 ml-1">Full Name</label>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full mt-1 px-4 py-3 bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-black/5 rounded-xl font-bold text-center text-black outline-none transition-all"
+                  className="w-full px-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-black/10 focus:ring-4 focus:ring-black/5 rounded-2xl font-bold text-lg text-black outline-none transition-all placeholder:text-gray-300"
+                  placeholder="Your Name"
                 />
               </div>
-              <div className='text-left w-full'>
-                <label className="text-xs font-bold text-gray-500 uppercase ml-2">Occupation</label>
+              <div className='w-full'>
+                <label className="block text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-2 ml-1">Occupation</label>
                 <input
                   value={editOccupation}
                   onChange={(e) => setEditOccupation(e.target.value)}
-                  className="w-full mt-1 px-4 py-3 bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-black/5 rounded-xl font-medium text-center text-text-secondary outline-none transition-all"
-                  placeholder="e.g. Designer"
+                  className="w-full px-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-black/10 focus:ring-4 focus:ring-black/5 rounded-2xl font-semibold text-base text-gray-700 outline-none transition-all placeholder:text-gray-300"
+                  placeholder="What do you do?"
                 />
               </div>
             </div>
           ) : (
-            <>
-              <h1 className="text-2xl font-bold tracking-tight text-black">{user?.name}</h1>
-              <p className="text-text-secondary text-sm font-medium">{user?.occupation || 'Member'}</p>
-              <p className="text-text-secondary text-xs">{user?.email}</p>
-            </>
+            <div className="text-center space-y-1">
+              <h1 className="text-2xl font-black tracking-tight text-black">{user?.name}</h1>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-50 border border-gray-100">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{user?.occupation || 'Member'}</span>
+              </div>
+            </div>
           )}
         </div>
 

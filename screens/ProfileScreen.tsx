@@ -53,7 +53,7 @@ const ProfileScreen: React.FC = () => {
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
-      // Update profile
+      // Update profile in DB
       const { error: updateError } = await supabase
         .from('profiles')
         .upsert({
@@ -61,9 +61,12 @@ const ProfileScreen: React.FC = () => {
           avatar_url: data.publicUrl
         });
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
+
+      // Update Auth Metadata (Backup for session)
+      await supabase.auth.updateUser({
+        data: { avatar_url: data.publicUrl }
+      });
 
       // Refresh profile to update UI instantly
       await refreshProfile();
@@ -146,6 +149,11 @@ const ProfileScreen: React.FC = () => {
         .eq('id', user?.id);
 
       if (error) throw error;
+
+      // Update Auth Metadata
+      await supabase.auth.updateUser({
+        data: { full_name: editName }
+      });
 
       alert('Profile updated successfully!');
       setIsEditing(false);
@@ -335,16 +343,28 @@ const ProfileScreen: React.FC = () => {
         ) : (
           <div className="overflow-x-auto pb-4 px-6 hide-scrollbar flex gap-4 snap-x snap-mandatory">
             {recentEvents.map((event) => (
-              <div key={event.id} className="snap-center shrink-0 w-[280px] bg-white rounded-3xl p-3 border border-gray-100 shadow-sm">
-                <div className="relative w-full aspect-[16/9] rounded-2xl bg-cover bg-center mb-3 overflow-hidden" style={{ backgroundImage: `url("${event.imageUrl}")` }}>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-black shadow-sm uppercase tracking-wide">Hosted</div>
+              <div key={event.id} className="snap-center shrink-0 w-[280px] aspect-[16/10] relative rounded-3xl overflow-hidden shadow-lg border border-gray-100 group cursor-pointer">
+                <div
+                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                  style={{ backgroundImage: `url("${event.imageUrl}")` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-full text-[10px] font-bold text-white shadow-sm uppercase tracking-wide">
+                  Event
                 </div>
-                <div className="px-1 pb-1">
-                  <h4 className="font-bold text-black truncate text-base">{event.title}</h4>
-                  <div className="flex items-center gap-1.5 text-text-secondary text-xs mt-1.5 font-medium">
+
+                <div className="absolute bottom-0 left-0 w-full p-4 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-black bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full uppercase tracking-wide">
+                      <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+                      {event.date}
+                    </span>
+                  </div>
+                  <h4 className="text-white font-bold text-lg leading-tight truncate">{event.title}</h4>
+                  <div className="flex items-center gap-1.5 text-gray-200 text-xs font-medium">
                     <span className="material-symbols-outlined text-[16px]">location_on</span>
-                    <span>{event.location} • {event.date}</span>
+                    <span className="truncate">{event.location}</span>
                   </div>
                 </div>
               </div>

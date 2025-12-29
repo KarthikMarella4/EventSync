@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .eq('id', sbUser.id)
                 .single();
 
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
 
             const result: any = await Promise.race([fetchProfile, timeout]);
             data = result.data;

@@ -73,18 +73,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Try to fetch profile from 'profiles' table with a timeout
         let data: any = null;
         try {
-            const fetchProfile = supabase
+            const { data: profileData, error } = await supabase
                 .from('profiles')
                 .select('full_name, avatar_url, occupation')
                 .eq('id', sbUser.id)
                 .single();
 
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
-
-            const result: any = await Promise.race([fetchProfile, timeout]);
-            data = result.data;
+            if (error) throw error;
+            data = profileData;
         } catch (e) {
-            console.warn('Profile fetch timed out or failed, using metadata defaults', e);
+            console.warn('Profile fetch failed, using metadata defaults', e);
         }
 
         // Fallback to metadata or defaults if no profile row yet

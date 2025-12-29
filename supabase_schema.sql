@@ -79,8 +79,12 @@ drop policy if exists "Authenticated users can upload photos to events." on even
 create policy "Authenticated users can upload photos to events." on event_photos for insert with check ( auth.role() = 'authenticated' );
 
 -- 4. STORAGE
-insert into storage.buckets (id, name) values ('avatars', 'avatars') on conflict (id) do nothing;
-insert into storage.buckets (id, name) values ('event-images', 'event-images') on conflict (id) do nothing;
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict (id) do update set public = true;
+insert into storage.buckets (id, name, public) values ('event-images', 'event-images', true) on conflict (id) do update set public = true;
+
+-- Explicitly force public=true for existing buckets (Redundant safety check)
+update storage.buckets set public = true where id = 'avatars';
+update storage.buckets set public = true where id = 'event-images';
 
 -- AVATARS POLICIES
 drop policy if exists "Avatars are publicly accessible." on storage.objects;

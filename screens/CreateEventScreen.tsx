@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { createCalendarEvent } from '../lib/googleCalendar';
 
 interface CreateEventScreenProps {
   onClose: () => void;
+  onEventCreated?: (date: string) => void;
 }
 
-const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose }) => {
+const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventCreated }) => {
   const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState('Party');
   const [title, setTitle] = useState('');
@@ -19,6 +21,21 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose }) => {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
+
+  // Custom Time State
+  const [timeHour, setTimeHour] = useState('12');
+  const [timeMinute, setTimeMinute] = useState('00');
+  const [timeAmPm, setTimeAmPm] = useState('PM');
+
+  // Sync to 24h format for DB
+  React.useEffect(() => {
+    let hourInt = parseInt(timeHour, 10);
+    if (timeAmPm === 'PM' && hourInt < 12) hourInt += 12;
+    if (timeAmPm === 'AM' && hourInt === 12) hourInt = 0;
+
+    const hourStr = hourInt.toString().padStart(2, '0');
+    setTime(`${hourStr}:${timeMinute}`);
+  }, [timeHour, timeMinute, timeAmPm]);
 
   const categories = ['Party', 'Music', 'Workshop', 'Business', 'Social'];
 
@@ -83,7 +100,36 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose }) => {
 
       if (insertError) throw insertError;
 
-      alert('Event published successfully!');
+      // Add to Google Calendar
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const providerToken = session?.provider_token;
+
+        if (providerToken) {
+          // Construct start and end times
+          // Assuming 1 hour duration if not specified
+          const startDateTime = new Date(`${date}T${time}`);
+          const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+
+          await createCalendarEvent({
+            title,
+            description,
+            location,
+            startTime: startDateTime.toISOString(),
+            endTime: endDateTime.toISOString(),
+          }, providerToken);
+
+          alert('Event published and added to your Google Calendar!');
+        } else {
+          alert('Event published! (Calendar sync skipped: No Google permission)');
+        }
+
+      } catch (calendarError) {
+        console.error("Calendar Sync Error", calendarError);
+        alert('Event published, but failed to add to Google Calendar.');
+      }
+
+      if (onEventCreated) onEventCreated(date);
       onClose();
 
     } catch (error: any) {
@@ -156,12 +202,54 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose }) => {
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-text-main ml-1">Time</label>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-full h-14 px-4 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold text-text-main outline-none transition-all"
-            />
+            <div className="flex gap-2">
+              {/* Hour */}
+              <div className="relative flex-1">
+                <select
+                  value={timeHour}
+                  onChange={(e) => setTimeHour(e.target.value)}
+                  className="w-full h-14 px-4 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold text-text-main outline-none appearance-none transition-all"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                    <option key={h} value={h.toString()}>{h}</option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <span className="material-symbols-outlined text-sm text-text-muted">expand_more</span>
+                </div>
+              </div>
+
+              {/* Minute */}
+              <div className="relative flex-1">
+                <select
+                  value={timeMinute}
+                  onChange={(e) => setTimeMinute(e.target.value)}
+                  className="w-full h-14 px-4 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold text-text-main outline-none appearance-none transition-all"
+                >
+                  {['00', '15', '30', '45'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <span className="material-symbols-outlined text-sm text-text-muted">expand_more</span>
+                </div>
+              </div>
+
+              {/* AM/PM */}
+              <div className="relative w-24">
+                <select
+                  value={timeAmPm}
+                  onChange={(e) => setTimeAmPm(e.target.value)}
+                  className="w-full h-14 px-4 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold text-text-main outline-none appearance-none transition-all"
+                >
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <span className="material-symbols-outlined text-sm text-text-muted">expand_more</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

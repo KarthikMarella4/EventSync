@@ -6,9 +6,10 @@ import { supabase } from '../lib/supabase';
 
 interface HomeScreenProps {
   onNavigate: (screen: Screen) => void;
+  initialSelectedDate?: string | null;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate }) => {
   const { user } = useAuth();
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [recommendedEvents, setRecommendedEvents] = useState<Event[]>([]);
@@ -16,6 +17,53 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   // Delete Modal State
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Calendar Logic
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  // Initialize with today's date formatted correctly
+  const initDate = new Date();
+  const initDateStr = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
+  const [selectedDate, setSelectedDate] = useState<string | null>(initDateStr);
+
+  // Sync with prop
+  useEffect(() => {
+    if (initialSelectedDate) {
+      setSelectedDate(initialSelectedDate);
+      // Update month to match
+      const [y, m] = initialSelectedDate.split('-').map(Number);
+      setCurrentMonth(new Date(y, m - 1, 1));
+    }
+  }, [initialSelectedDate]);
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const days = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    return { days, firstDay };
+  };
+
+  const hasEventOnDate = (day: number) => {
+    const year = currentMonth.getFullYear();
+    const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayStr}`;
+
+    // Check both lists
+    const allEvents = [...featuredEvents, ...recommendedEvents];
+    return allEvents.some(e => e.date === dateStr);
+  };
+
+  const viewNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+
+  const viewPrevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
 
   useEffect(() => {
     fetchEvents();
@@ -58,6 +106,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     }
   };
 
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const h = parseInt(hours, 10);
+    const m = minutes || '00';
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
+  };
+
   return (
     <div className="pb-24 relative">
       {/* Delete Confirmation Modal */}
@@ -89,6 +147,105 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
                   Delete
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar Modal */}
+      {isCalendarOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between mb-6 shrink-0">
+              <h3 className="text-lg font-bold text-black">
+                {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h3>
+              <div className="flex gap-2">
+                <button onClick={viewPrevMonth} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                  <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                <button onClick={viewNextMonth} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                  <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+                <button onClick={() => setIsCalendarOpen(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors text-red-500">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 text-center mb-2">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                <div key={d} className="text-xs font-bold text-gray-400 py-1">{d}</div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 place-items-center shrink-0">
+              {Array.from({ length: getDaysInMonth(currentMonth).firstDay }).map((_, i) => (
+                <div key={`empty-${i}`} className="size-10"></div>
+              ))}
+              {Array.from({ length: getDaysInMonth(currentMonth).days }).map((_, i) => {
+                const day = i + 1;
+                // Fix timezone issue by using local construction
+                const year = currentMonth.getFullYear();
+                const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+                const dayStr = String(day).padStart(2, '0');
+                const dateStr = `${year}-${month}-${dayStr}`;
+
+                const isToday = day === today.getDate() && currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear();
+                const isSelected = selectedDate === dateStr;
+                const hasEvent = hasEventOnDate(day);
+
+                return (
+                  <button
+                    key={day}
+                    onClick={() => setSelectedDate(dateStr)}
+                    className={`size-10 flex flex-col items-center justify-center rounded-full text-sm font-semibold relative transition-all 
+                      ${isSelected ? 'bg-black text-white scale-110 shadow-lg z-10' : isToday ? 'bg-gray-200 text-black' : 'hover:bg-gray-50 text-text-main'}
+                    `}
+                  >
+                    <span>{day}</span>
+                    {hasEvent && !isSelected && (
+                      <span className={`absolute bottom-1.5 size-1 rounded-full ${isToday ? 'bg-black' : 'bg-accent'}`}></span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected Date Events */}
+            <div className="mt-6 pt-6 border-t border-gray-100 overflow-y-auto min-h-[100px]">
+              <h4 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">
+                {selectedDate ? new Date(selectedDate).toLocaleDateString('default', { month: 'long', day: 'numeric' }) : 'Select a date'}
+              </h4>
+
+              {selectedDate ? (
+                (() => {
+                  const dayEvents = [...featuredEvents, ...recommendedEvents].filter(e => e.date === selectedDate);
+
+                  if (dayEvents.length === 0) {
+                    return <p className="text-sm text-gray-400 text-center py-4">No events scheduled.</p>;
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-3">
+                      {dayEvents.map(event => (
+                        <div key={event.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition-colors">
+                          <div
+                            className="size-10 rounded-lg bg-cover bg-center shrink-0"
+                            style={{ backgroundImage: `url("${event.imageUrl}")` }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h5 className="text-sm font-bold text-black truncate">{event.title}</h5>
+                            <p className="text-xs text-gray-500">{formatTime(event.time)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-4">Tap a date to see events.</p>
+              )}
             </div>
           </div>
         </div>
@@ -173,7 +330,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
                   <div className="flex items-center gap-4 text-white/90 text-xs font-medium">
                     <div className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-                      <span>{event.date} • {event.time}</span>
+                      <span>{event.date} • {formatTime(event.time)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[16px]">location_on</span>
@@ -191,7 +348,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       <section className="px-5 mt-8">
         <h3 className="text-text-main text-lg font-bold mb-5">Quick Actions</h3>
         <div className="grid grid-cols-4 gap-4">
-          <button className="flex flex-col items-center gap-2.5 group">
+          <button onClick={() => setIsCalendarOpen(true)} className="flex flex-col items-center gap-2.5 group">
             <div className="size-16 rounded-2xl bg-white text-blue-600 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-blue-50 transition-colors">
               <span className="material-symbols-outlined text-[28px]">calendar_month</span>
             </div>
@@ -246,7 +403,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
                     )}
                   </div>
                   <h4 className="text-text-main font-bold text-[15px] leading-snug line-clamp-2">{event.title}</h4>
-                  <p className="text-text-muted text-xs font-medium mt-1">{event.date} • {event.time}</p>
+                  <p className="text-text-muted text-xs font-medium mt-1">{event.date} • {formatTime(event.time)}</p>
                 </div>
                 {event.attendeesCount && (
                   <div className="flex items-center gap-2 mt-2">
@@ -272,7 +429,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
           ))}
         </div>
       </section>
-    </div>
+    </div >
   );
 };
 

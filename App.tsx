@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 const AppContent: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [targetDate, setTargetDate] = useState<string | null>(null);
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -24,7 +25,7 @@ const AppContent: React.FC = () => {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'home':
-        return <HomeScreen onNavigate={(s) => setCurrentScreen(s)} />;
+        return <HomeScreen onNavigate={(s) => setCurrentScreen(s)} initialSelectedDate={targetDate} />;
       case 'dashboard':
         return <DashboardScreen />;
       case 'gallery':
@@ -32,7 +33,7 @@ const AppContent: React.FC = () => {
       case 'profile':
         return <ProfileScreen />;
       default:
-        return <HomeScreen onNavigate={(s) => setCurrentScreen(s)} />;
+        return <HomeScreen onNavigate={(s) => setCurrentScreen(s)} initialSelectedDate={targetDate} />;
     }
   };
 
@@ -92,7 +93,14 @@ const AppContent: React.FC = () => {
       {/* Modals */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[60] bg-white animate-in slide-in-from-bottom duration-300">
-          <CreateEventScreen onClose={() => setShowCreateModal(false)} />
+          <CreateEventScreen
+            onClose={() => setShowCreateModal(false)}
+            onEventCreated={(date) => {
+              setTargetDate(date);
+              // Also switch to home to see the calendar
+              setCurrentScreen('home');
+            }}
+          />
         </div>
       )}
     </div>

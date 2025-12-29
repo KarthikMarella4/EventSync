@@ -396,7 +396,7 @@ const ProfileScreen: React.FC = () => {
 
         <button
           onClick={logout}
-          className="w-full bg-white text-black text-[15px] font-bold p-4 rounded-3xl border-2 border-black hover:bg-black hover:text-white transition-all duration-300 flex items-center justify-center gap-2 group shadow-sm mb-12"
+          className="w-full bg-white text-black text-[15px] font-bold p-4 rounded-3xl border-2 border-black hover:bg-black hover:text-white transition-all duration-300 flex items-center justify-center gap-2 group shadow-sm mb-12 active:scale-95"
         >
           <span className="material-symbols-outlined group-hover:text-white">logout</span>
           Log Out

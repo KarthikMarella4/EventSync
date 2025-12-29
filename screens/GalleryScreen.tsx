@@ -208,7 +208,7 @@ const GalleryScreen: React.FC = () => {
               <p className="text-sm font-medium">{searchQuery ? 'No photos found matching your search.' : 'No photos yet. Create an event!'}</p>
             </div>
           ) : (
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
               {filteredPhotos.map(photo => (
                 <div key={photo.id} className="break-inside-avoid relative group overflow-hidden rounded-2xl bg-slate-100 shadow-sm hover:shadow-md transition-all">
                   <img

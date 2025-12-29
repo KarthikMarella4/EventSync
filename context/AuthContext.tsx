@@ -164,6 +164,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const logout = async () => {
+        setUser(null); // Force local state clear immediately
+        setIsLoading(false);
         await supabase.auth.signOut();
     };
 

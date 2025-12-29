@@ -82,6 +82,18 @@ create policy "Authenticated users can upload photos to events." on event_photos
 insert into storage.buckets (id, name) values ('avatars', 'avatars') on conflict (id) do nothing;
 insert into storage.buckets (id, name) values ('event-images', 'event-images') on conflict (id) do nothing;
 
+-- AVATARS POLICIES
+drop policy if exists "Avatars are publicly accessible." on storage.objects;
+create policy "Avatars are publicly accessible." on storage.objects for select using ( bucket_id = 'avatars' );
+
+drop policy if exists "Authenticated users can upload avatars." on storage.objects;
+create policy "Authenticated users can upload avatars." on storage.objects for insert with check ( bucket_id = 'avatars' and auth.role() = 'authenticated' );
+
+drop policy if exists "Users can delete their own avatars." on storage.objects;
+create policy "Users can delete their own avatars." on storage.objects for delete using ( bucket_id = 'avatars' and auth.uid() = owner );
+
+-- EVENT IMAGES POLICIES
+
 drop policy if exists "Event images are publicly accessible." on storage.objects;
 create policy "Event images are publicly accessible." on storage.objects for select using ( bucket_id = 'event-images' );
 

@@ -39,9 +39,33 @@ export const createCalendarEvent = async (event: {
             throw new Error(data.error?.message || 'Failed to create calendar event');
         }
 
-        return data;
+        return data.id; // Return the Google Event ID
     } catch (error) {
         console.error('Error in createCalendarEvent:', error);
         throw error;
+    }
+};
+
+export const deleteCalendarEvent = async (eventId: string, providerToken: string) => {
+    console.log('Deleting calendar event:', eventId);
+    try {
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${providerToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            console.error('Calendar Delete Error:', data);
+            throw new Error(data.error?.message || 'Failed to delete calendar event');
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error in deleteCalendarEvent:', error);
+        // Don't throw, just log. We still want to delete from our app even if Google fails.
+        return false;
     }
 };

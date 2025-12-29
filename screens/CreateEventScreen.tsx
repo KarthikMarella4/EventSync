@@ -90,13 +90,13 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
         location,
         image_url: imageUrl,
         creator_id: user?.id
-      });
+      }).select().single();
 
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timed out - check your internet connection')), 10000)
       );
 
-      const { error: insertError }: any = await Promise.race([insertPromise, timeoutPromise]);
+      const { data: newSupabaseEvent, error: insertError }: any = await Promise.race([insertPromise, timeoutPromise]);
 
       if (insertError) throw insertError;
 
@@ -111,13 +111,18 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
           const startDateTime = new Date(`${date}T${time}`);
           const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
 
-          await createCalendarEvent({
+          const googleEventId = await createCalendarEvent({
             title,
             description,
             location,
             startTime: startDateTime.toISOString(),
             endTime: endDateTime.toISOString(),
           }, providerToken);
+
+          if (googleEventId) {
+            // Update Supabase event with Google ID
+            await supabase.from('events').update({ google_calendar_event_id: googleEventId }).eq('id', newSupabaseEvent.id);
+          }
 
           alert('Event published and added to your Google Calendar!');
         } else {

@@ -3,6 +3,7 @@ import { FEATURED_EVENTS, RECOMMENDED_EVENTS } from '../constants'; // Fallback
 import { Event, Screen } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { deleteCalendarEvent } from '../lib/googleCalendar';
 
 interface HomeScreenProps {
   onNavigate: (screen: Screen) => void;
@@ -95,16 +96,43 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
     if (!eventToDelete) return;
 
     setIsDeleting(true);
-    const { error } = await supabase.from('events').delete().eq('id', eventToDelete);
-    setIsDeleting(false);
 
-    if (error) {
-      alert('Failed to delete: ' + error.message); // Keep alert for error to be visible
-    } else {
+    try {
+      // 1. Get the event details to check for Google Calendar ID
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('google_calendar_event_id')
+        .eq('id', eventToDelete)
+        .single();
+
+      // 2. If it has a Google Calendar ID, delete it from Google first
+      if (eventData?.google_calendar_event_id) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const providerToken = session?.provider_token;
+          if (providerToken) {
+            await deleteCalendarEvent(eventData.google_calendar_event_id, providerToken);
+          }
+        } catch (googleError) {
+          console.error("Failed to delete from Google Calendar", googleError);
+          // We continue to delete from app even if Google fails
+        }
+      }
+
+      // 3. Delete from Supabase
+      const { error } = await supabase.from('events').delete().eq('id', eventToDelete);
+
+      if (error) throw error;
+
       // Success
       setFeaturedEvents(prev => prev.filter(e => e.id !== eventToDelete));
       setRecommendedEvents(prev => prev.filter(e => e.id !== eventToDelete));
       setEventToDelete(null);
+
+    } catch (error: any) {
+      alert('Failed to delete: ' + error.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 

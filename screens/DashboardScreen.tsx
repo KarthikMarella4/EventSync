@@ -12,6 +12,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'hosting' | 'past'>('upcoming');
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Photo Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,8 +129,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
     return `${h12}:${m} ${ampm}`;
   };
 
+  // Filter Logic
+  const filteredEvents = events.filter(e => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return e.title.toLowerCase().includes(q) || e.location.toLowerCase().includes(q);
+  });
+
   return (
-    <div className="pb-28">
+    <div className="pb-28 max-w-7xl mx-auto w-full min-h-screen bg-white shadow-sm ring-1 ring-gray-100">
       {/* Hidden File Input */}
       <input
         type="file"
@@ -140,39 +148,56 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-4 flex items-center justify-between border-b border-border-light">
-        <div className="flex items-center gap-3">
-          <div
-            className="h-10 w-10 rounded-full bg-surface border border-border-light shadow-sm bg-cover bg-center"
-            style={{ backgroundImage: `url("${user?.avatar || 'https://ui-avatars.com/api/?name=' + user?.name}")` }}
-          />
-          <div>
-            <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">Dashboard</p>
-            <h1 className="text-xl font-bold leading-tight text-black">My Events</h1>
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-4 border-b border-border-light space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="h-10 w-10 rounded-full bg-surface border border-border-light shadow-sm bg-cover bg-center"
+              style={{ backgroundImage: `url("${user?.avatar || 'https://ui-avatars.com/api/?name=' + user?.name}")` }}
+            />
+            <div>
+              <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">Dashboard</p>
+              <h1 className="text-xl font-bold leading-tight text-black">My Events</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="p-2.5 rounded-full hover:bg-surface relative">
+              <span className="material-symbols-outlined">notifications</span>
+              <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="p-2.5 rounded-full hover:bg-surface"><span className="material-symbols-outlined">search</span></button>
-          <button className="p-2.5 rounded-full hover:bg-surface relative">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-          </button>
+
+        {/* Search Bar */}
+        <div className="relative group">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-black transition-colors">
+            <span className="material-symbols-outlined">search</span>
+          </span>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 pl-11 pr-4 bg-surface border border-border-light rounded-xl outline-none focus:ring-2 focus:ring-black/5 focus:border-black/20 text-sm font-medium transition-all"
+            placeholder="Search your events..."
+            type="text"
+          />
         </div>
       </header>
 
       {/* Hosting / Created Events */}
       <section className="mt-6">
         <div className="px-5 mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight">Created by You <span className="text-text-muted font-medium text-lg ml-1">({events.length})</span></h2>
+          <h2 className="text-xl font-bold tracking-tight">Created by You <span className="text-text-muted font-medium text-lg ml-1">({filteredEvents.length})</span></h2>
         </div>
 
         {loading ? (
           <div className="px-5 text-sm text-gray-400">Loading events...</div>
-        ) : events.length === 0 ? (
-          <div className="px-5 text-sm text-gray-400">You haven't created any events yet.</div>
+        ) : filteredEvents.length === 0 ? (
+          <div className="px-5 text-sm text-gray-400">
+            {searchQuery ? 'No events found.' : "You haven't created any events yet."}
+          </div>
         ) : (
           <div className="flex overflow-x-auto no-scrollbar gap-4 px-5 pb-2">
-            {events.map(event => (
+            {filteredEvents.map(event => (
               <div key={event.id} className="flex-none w-80 bg-white rounded-3xl p-4 shadow-soft border border-border-light flex flex-col gap-4">
                 <div
                   className="h-36 w-full rounded-2xl bg-cover bg-center relative overflow-hidden"
@@ -238,7 +263,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
             <div className="h-[1px] flex-1 bg-border-light"></div>
           </div>
 
-          {events.map(event => (
+          {filteredEvents.map(event => (
             <div key={event.id} className="group relative bg-white rounded-3xl p-5 flex gap-5 shadow-sharp border border-border-light hover:border-black/20 active:scale-[0.99] transition-all">
               <div className="flex-none w-16 flex flex-col items-center justify-center bg-black text-white rounded-2xl py-3 h-fit shadow-md shadow-black/20">
                 <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>

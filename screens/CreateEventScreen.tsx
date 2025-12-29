@@ -310,6 +310,17 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
         {/* Categories */}
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-text-main ml-1">Category</label>
+
+          {/* Manual Input */}
+          <input
+            value={activeCategory}
+            onChange={(e) => setActiveCategory(e.target.value)}
+            className="w-full h-12 px-4 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-medium text-text-main outline-none transition-all placeholder-gray-400"
+            placeholder="Type your own or select below"
+            type="text"
+          />
+
+          {/* Suggestions */}
           <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-2">
             {categories.map(cat => (
               <button

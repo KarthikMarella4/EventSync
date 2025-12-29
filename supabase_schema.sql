@@ -85,5 +85,13 @@ insert into storage.buckets (id, name) values ('event-images', 'event-images') o
 drop policy if exists "Event images are publicly accessible." on storage.objects;
 create policy "Event images are publicly accessible." on storage.objects for select using ( bucket_id = 'event-images' );
 
+
 drop policy if exists "Authenticated users can upload event images." on storage.objects;
 create policy "Authenticated users can upload event images." on storage.objects for insert with check ( bucket_id = 'event-images' and auth.role() = 'authenticated' );
+
+drop policy if exists "Users can delete their own event images." on storage.objects;
+create policy "Users can delete their own event images." on storage.objects for delete using ( bucket_id = 'event-images' and auth.uid() = owner );
+
+-- Additional Policies for event_photos
+drop policy if exists "Users can delete their own photos." on event_photos;
+create policy "Users can delete their own photos." on event_photos for delete using ( auth.uid() = user_id );

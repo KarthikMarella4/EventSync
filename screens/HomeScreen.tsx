@@ -12,6 +12,9 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate }) => {
   const { user } = useAuth();
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllFeatured, setShowAllFeatured] = useState(false);
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [recommendedEvents, setRecommendedEvents] = useState<Event[]>([]);
 
@@ -33,13 +36,37 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
   useEffect(() => {
     if (initialSelectedDate) {
       setSelectedDate(initialSelectedDate);
-      // Update month to match
       const [y, m] = initialSelectedDate.split('-').map(Number);
       setCurrentMonth(new Date(y, m - 1, 1));
-      // Refresh events to ensure the new event is shown
       fetchEvents();
     }
   }, [initialSelectedDate]);
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  // Filter effect
+  useEffect(() => {
+    let filtered = allEvents;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = allEvents.filter(e =>
+        e.title.toLowerCase().includes(q) ||
+        e.location.toLowerCase().includes(q) ||
+        e.category?.toLowerCase().includes(q)
+      );
+    }
+
+    if (showAllFeatured) {
+      setFeaturedEvents(filtered);
+      setRecommendedEvents([]);
+    } else {
+      setFeaturedEvents(filtered.slice(0, 5));
+      setRecommendedEvents(filtered.slice(5));
+    }
+  }, [allEvents, searchQuery, showAllFeatured]);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -55,8 +82,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
     const dayStr = String(day).padStart(2, '0');
     const dateStr = `${year}-${month}-${dayStr}`;
 
-    // Check both lists
-    const allEvents = [...featuredEvents, ...recommendedEvents];
     return allEvents.some(e => e.date === dateStr);
   };
 
@@ -68,9 +93,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
 
   const fetchEvents = async () => {
     const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: false });
@@ -86,9 +108,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         distance: '2.5 mi',
         creatorId: e.creator_id // Need this to check ownership
       }));
-      // Split for demo: first 5 featured, rest recommended
-      setFeaturedEvents(mappedEvents.slice(0, 5));
-      setRecommendedEvents(mappedEvents.slice(5));
+      setAllEvents(mappedEvents);
     }
   };
 
@@ -115,7 +135,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
           }
         } catch (googleError) {
           console.error("Failed to delete from Google Calendar", googleError);
-          // We continue to delete from app even if Google fails
         }
       }
 
@@ -125,8 +144,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       if (error) throw error;
 
       // Success
-      setFeaturedEvents(prev => prev.filter(e => e.id !== eventToDelete));
-      setRecommendedEvents(prev => prev.filter(e => e.id !== eventToDelete));
+      setAllEvents(prev => prev.filter(e => e.id !== eventToDelete));
       setEventToDelete(null);
 
     } catch (error: any) {
@@ -147,7 +165,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
   };
 
   return (
-    <div className="pb-24 relative">
+    <div className="pb-24 relative max-w-7xl mx-auto w-full min-h-screen bg-white shadow-sm ring-1 ring-gray-100">
       {/* Delete Confirmation Modal */}
       {eventToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -252,7 +270,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
               {selectedDate ? (
                 (() => {
-                  const dayEvents = [...featuredEvents, ...recommendedEvents].filter(e => e.date === selectedDate);
+                  const dayEvents = allEvents.filter(e => e.date === selectedDate);
 
                   if (dayEvents.length === 0) {
                     return <p className="text-sm text-gray-400 text-center py-4">No events scheduled.</p>;
@@ -284,7 +302,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       )}
 
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-transparent">
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-white">
         <div className="flex items-center p-5 pb-2 justify-between">
           <div className="flex items-center gap-3.5 flex-1">
             <div className="relative">
@@ -306,17 +324,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         </div>
 
         <div className="px-5 pb-4 mt-2">
-          <div className="relative group">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-black transition-colors">
-              <span className="material-symbols-outlined">search</span>
-            </span>
-            <input
-              className="w-full h-12 pl-12 pr-4 bg-surface border border-border-light rounded-2xl outline-none focus:ring-2 focus:ring-black/5 focus:border-black/20 text-text-main placeholder-text-muted transition-all shadow-sm font-medium"
-              placeholder="Search events, people, or venues..."
-              type="text"
-            />
-            <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-text-muted hover:bg-gray-200 transition">
-              <span className="material-symbols-outlined text-[20px]">tune</span>
+          {/* Improved Search Bar Layout */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 group">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-black transition-colors">
+                <span className="material-symbols-outlined">search</span>
+              </span>
+              <input
+                className="w-full h-12 pl-12 pr-4 bg-surface border border-border-light rounded-2xl outline-none focus:ring-2 focus:ring-black/5 focus:border-black/20 text-text-main placeholder-text-muted transition-all shadow-sm font-medium"
+                placeholder="Search events..."
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <button className="size-12 shrink-0 flex items-center justify-center rounded-2xl bg-surface border border-border-light hover:bg-gray-100 transition-colors shadow-sm">
+              <span className="material-symbols-outlined text-[24px] text-text-main">tune</span>
             </button>
           </div>
         </div>
@@ -326,17 +349,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       <section className="mt-6">
         <div className="flex items-center justify-between px-5 mb-4">
           <h2 className="text-xl font-bold text-text-main">Featured Events</h2>
-          <button className="text-sm font-bold text-secondary hover:text-secondary/80 transition-colors flex items-center gap-0.5">
-            See All <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+          <button
+            onClick={() => setShowAllFeatured(!showAllFeatured)}
+            className="text-sm font-bold text-secondary hover:text-secondary/80 transition-colors flex items-center gap-0.5"
+          >
+            {showAllFeatured ? 'Show Less' : 'See All'} <span className="material-symbols-outlined text-[16px]">{showAllFeatured ? 'expand_less' : 'chevron_right'}</span>
           </button>
         </div>
 
         {featuredEvents.length === 0 ? (
-          <div className="px-5 text-gray-400 text-sm">No events found. Create one!</div>
+          <div className="px-5 text-gray-400 text-sm">No events found.</div>
         ) : (
-          <div className="flex overflow-x-auto hide-scrollbar px-5 gap-5 pb-4 snap-x snap-mandatory">
+          <div className={`px-5 ${showAllFeatured ? 'grid grid-cols-1 gap-5' : 'flex overflow-x-auto hide-scrollbar gap-5 pb-4 snap-x snap-mandatory'}`}>
             {featuredEvents.map((event) => (
-              <div key={event.id} className="snap-center shrink-0 w-[88%] max-w-[340px] relative rounded-3xl overflow-hidden aspect-[16/10] group cursor-pointer shadow-lg shadow-black/10 hover:shadow-xl transition-shadow">
+              <div key={event.id} className={`snap-center shrink-0 ${showAllFeatured ? 'w-full' : 'w-[88%] max-w-[340px]'} relative rounded-3xl overflow-hidden aspect-[16/10] group cursor-pointer shadow-lg shadow-black/10 hover:shadow-xl transition-shadow`}>
                 <div
                   className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                   style={{ backgroundImage: `url("${event.imageUrl}")` }}
@@ -344,7 +370,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                 {/* Delete Button for Owner */}
-                {/* @ts-ignore - casting for quick fix as we added creatorId dynamically */}
+                {/* @ts-ignore */}
                 {user?.id === event.creatorId && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setEventToDelete(event.id); }}
@@ -377,91 +403,95 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       </section>
 
       {/* Quick Actions */}
-      <section className="px-5 mt-8">
-        <h3 className="text-text-main text-lg font-bold mb-5">Quick Actions</h3>
-        <div className="grid grid-cols-4 gap-4">
-          <button onClick={() => setIsCalendarOpen(true)} className="flex flex-col items-center gap-2.5 group">
-            <div className="size-16 rounded-2xl bg-white text-blue-600 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-blue-50 transition-colors">
-              <span className="material-symbols-outlined text-[28px]">calendar_month</span>
-            </div>
-            <span className="text-xs font-medium text-text-muted group-hover:text-blue-600 transition-colors">Calendar</span>
-          </button>
-          <button className="flex flex-col items-center gap-2.5 group">
-            <div className="size-16 rounded-2xl bg-white text-orange-500 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-orange-50 transition-colors">
-              <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
-            </div>
-            <span className="text-xs font-medium text-text-muted group-hover:text-orange-500 transition-colors">Tickets</span>
-          </button>
-          <button className="flex flex-col items-center gap-2.5 group">
-            <div className="size-16 rounded-2xl bg-white text-purple-600 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-purple-50 transition-colors">
-              <span className="material-symbols-outlined text-[28px]">groups</span>
-            </div>
-            <span className="text-xs font-medium text-text-muted group-hover:text-purple-600 transition-colors">Invites</span>
-          </button>
-        </div>
-      </section>
+      {!showAllFeatured && (
+        <section className="px-5 mt-8">
+          <h3 className="text-text-main text-lg font-bold mb-5">Quick Actions</h3>
+          <div className="grid grid-cols-4 gap-4">
+            <button onClick={() => setIsCalendarOpen(true)} className="flex flex-col items-center gap-2.5 group">
+              <div className="size-16 rounded-2xl bg-white text-blue-600 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-blue-50 transition-colors">
+                <span className="material-symbols-outlined text-[28px]">calendar_month</span>
+              </div>
+              <span className="text-xs font-medium text-text-muted group-hover:text-blue-600 transition-colors">Calendar</span>
+            </button>
+            <button className="flex flex-col items-center gap-2.5 group">
+              <div className="size-16 rounded-2xl bg-white text-orange-500 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-orange-50 transition-colors">
+                <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
+              </div>
+              <span className="text-xs font-medium text-text-muted group-hover:text-orange-500 transition-colors">Tickets</span>
+            </button>
+            <button className="flex flex-col items-center gap-2.5 group">
+              <div className="size-16 rounded-2xl bg-white text-purple-600 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-purple-50 transition-colors">
+                <span className="material-symbols-outlined text-[28px]">groups</span>
+              </div>
+              <span className="text-xs font-medium text-text-muted group-hover:text-purple-600 transition-colors">Invites</span>
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Recommended */}
-      <section className="px-5 mt-8">
-        <h3 className="text-lg font-bold text-text-main mb-5">Recommended For You</h3>
-        <div className="flex flex-col gap-4">
-          {recommendedEvents.map((event) => (
-            <div key={event.id} className="bg-white p-3 rounded-2xl flex gap-4 shadow-soft border border-border-light hover:border-black/10 transition-colors cursor-pointer group">
-              <div
-                className="w-24 aspect-square rounded-xl bg-cover bg-center shrink-0 relative overflow-hidden"
-                style={{ backgroundImage: `url("${event.imageUrl}")` }}
-              />
-              <div className="flex flex-col justify-between py-1 flex-1">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${event.category === 'Wellness' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-purple-700 bg-purple-50 border border-purple-100'
-                      }`}>
-                      {event.category}
-                    </span>
-                    <span className="text-[11px] font-medium text-text-muted flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px]">near_me</span>
-                      {event.distance}
-                    </span>
+      {!showAllFeatured && recommendedEvents.length > 0 && (
+        <section className="px-5 mt-8">
+          <h3 className="text-lg font-bold text-text-main mb-5">Recommended For You</h3>
+          <div className="flex flex-col gap-4">
+            {recommendedEvents.map((event) => (
+              <div key={event.id} className="bg-white p-3 rounded-2xl flex gap-4 shadow-soft border border-border-light hover:border-black/10 transition-colors cursor-pointer group">
+                <div
+                  className="w-24 aspect-square rounded-xl bg-cover bg-center shrink-0 relative overflow-hidden"
+                  style={{ backgroundImage: `url("${event.imageUrl}")` }}
+                />
+                <div className="flex flex-col justify-between py-1 flex-1">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${event.category === 'Wellness' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-purple-700 bg-purple-50 border border-purple-100'
+                        }`}>
+                        {event.category}
+                      </span>
+                      <span className="text-[11px] font-medium text-text-muted flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px]">near_me</span>
+                        {event.distance}
+                      </span>
 
-                    {/* Delete Button for Recommended (Owner) */}
-                    {/* @ts-ignore */}
-                    {user?.id === event.creatorId && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEventToDelete(event.id); }}
-                        className="ml-auto text-red-500 hover:text-red-700 p-1"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                      </button>
-                    )}
-                  </div>
-                  <h4 className="text-text-main font-bold text-[15px] leading-snug line-clamp-2">{event.title}</h4>
-                  <p className="text-text-muted text-xs font-medium mt-1">{event.date} • {formatTime(event.time)}</p>
-                </div>
-                {event.attendeesCount && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="flex -space-x-2 overflow-hidden">
-                      {event.attendeesAvatars?.map((av, i) => (
-                        <img key={i} src={av} className="inline-block size-5 rounded-full ring-2 ring-white object-cover" alt="User" />
-                      ))}
+                      {/* Delete Button for Recommended (Owner) */}
+                      {/* @ts-ignore */}
+                      {user?.id === event.creatorId && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEventToDelete(event.id); }}
+                          className="ml-auto text-red-500 hover:text-red-700 p-1"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      )}
                     </div>
-                    <span className="text-[10px] text-text-muted font-semibold">+{event.attendeesCount} going</span>
+                    <h4 className="text-text-main font-bold text-[15px] leading-snug line-clamp-2">{event.title}</h4>
+                    <p className="text-text-muted text-xs font-medium mt-1">{event.date} • {formatTime(event.time)}</p>
                   </div>
-                )}
-                {event.id === 'r2' && (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <span className="text-[10px] text-text-main font-semibold flex items-center gap-1 bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
-                      <span className="material-symbols-outlined text-[12px] text-amber-500 fill-amber-500">star</span>
-                      4.9
-                    </span>
-                    <span className="text-[10px] text-text-muted">(120 reviews)</span>
-                  </div>
-                )}
+                  {event.attendeesCount && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex -space-x-2 overflow-hidden">
+                        {event.attendeesAvatars?.map((av, i) => (
+                          <img key={i} src={av} className="inline-block size-5 rounded-full ring-2 ring-white object-cover" alt="User" />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-text-muted font-semibold">+{event.attendeesCount} going</span>
+                    </div>
+                  )}
+                  {event.id === 'r2' && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="text-[10px] text-text-main font-semibold flex items-center gap-1 bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
+                        <span className="material-symbols-outlined text-[12px] text-amber-500 fill-amber-500">star</span>
+                        4.9
+                      </span>
+                      <span className="text-[10px] text-text-muted">(120 reviews)</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div >
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 };
 

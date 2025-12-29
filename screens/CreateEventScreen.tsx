@@ -6,15 +6,16 @@ import { createCalendarEvent } from '../lib/googleCalendar';
 interface CreateEventScreenProps {
   onClose: () => void;
   onEventCreated?: (date: string) => void;
+  initialEvent?: any; // Using any to match the loose Supabase types for now, or define Event type
 }
 
-const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventCreated }) => {
+const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventCreated, initialEvent }) => {
   const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState('Party');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [coverImage, setCoverImage] = useState<string | null>(null); // This can be base64 from AI or File object
-  const [coverFile, setCoverFile] = useState<File | null>(null); // For manual uploads
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
   // New Fields
@@ -26,6 +27,30 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
   const [timeHour, setTimeHour] = useState('12');
   const [timeMinute, setTimeMinute] = useState('00');
   const [timeAmPm, setTimeAmPm] = useState('PM');
+
+  // Pre-fill on load if Editing
+  React.useEffect(() => {
+    if (initialEvent) {
+      setTitle(initialEvent.title || '');
+      setDescription(initialEvent.description || '');
+      setActiveCategory(initialEvent.category || 'Party');
+      setDate(initialEvent.date || '');
+      setLocation(initialEvent.location || '');
+      setCoverImage(initialEvent.imageUrl || initialEvent.image_url || null);
+
+      if (initialEvent.time) {
+        const [h, m] = initialEvent.time.split(':');
+        let hour = parseInt(h, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+
+        setTimeHour(hour12.toString());
+        setTimeMinute(m || '00');
+        setTimeAmPm(ampm);
+        setTime(initialEvent.time);
+      }
+    }
+  }, [initialEvent]);
 
   // Sync to 24h format for DB
   React.useEffect(() => {
@@ -80,8 +105,7 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
         imageUrl = data.publicUrl;
       }
 
-      // 10 second timeout
-      const insertPromise = supabase.from('events').insert({
+      const eventData = {
         title,
         description,
         category: activeCategory,
@@ -90,55 +114,65 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
         location,
         image_url: imageUrl,
         creator_id: user?.id
-      }).select().single();
+      };
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out - check your internet connection')), 10000)
-      );
+      if (initialEvent) {
+        // UPDATE EXISTING EVENT
+        const { error: updateError } = await supabase
+          .from('events')
+          .update(eventData)
+          .eq('id', initialEvent.id);
 
-      const { data: newSupabaseEvent, error: insertError }: any = await Promise.race([insertPromise, timeoutPromise]);
+        if (updateError) throw updateError;
+        alert('Event updated successfully!');
 
-      if (insertError) throw insertError;
+        // Optional: Update Google Calendar here if needed
 
-      // Add to Google Calendar
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const providerToken = session?.provider_token;
+      } else {
+        // CREATE NEW EVENT
+        const insertPromise = supabase.from('events').insert(eventData).select().single();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out - check your internet connection')), 10000)
+        );
 
-        if (providerToken) {
-          // Construct start and end times
-          // Assuming 1 hour duration if not specified
-          const startDateTime = new Date(`${date}T${time}`);
-          const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+        const { data: newSupabaseEvent, error: insertError }: any = await Promise.race([insertPromise, timeoutPromise]);
+        if (insertError) throw insertError;
 
-          const googleEventId = await createCalendarEvent({
-            title,
-            description,
-            location,
-            startTime: startDateTime.toISOString(),
-            endTime: endDateTime.toISOString(),
-          }, providerToken);
+        // Add to Google Calendar
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const providerToken = session?.provider_token;
 
-          if (googleEventId) {
-            // Update Supabase event with Google ID
-            await supabase.from('events').update({ google_calendar_event_id: googleEventId }).eq('id', newSupabaseEvent.id);
+          if (providerToken) {
+            const startDateTime = new Date(`${date}T${time}`);
+            const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+
+            const googleEventId = await createCalendarEvent({
+              title,
+              description,
+              location,
+              startTime: startDateTime.toISOString(),
+              endTime: endDateTime.toISOString(),
+            }, providerToken);
+
+            if (googleEventId) {
+              await supabase.from('events').update({ google_calendar_event_id: googleEventId }).eq('id', newSupabaseEvent.id);
+            }
+            alert('Event published and added to your Google Calendar!');
+          } else {
+            alert('Event published! (Calendar sync skipped: No Google permission)');
           }
-
-          alert('Event published and added to your Google Calendar!');
-        } else {
-          alert('Event published! (Calendar sync skipped: No Google permission)');
+        } catch (calendarError) {
+          console.error("Calendar Sync Error", calendarError);
+          alert('Event published, but failed to add to Google Calendar.');
         }
-
-      } catch (calendarError) {
-        console.error("Calendar Sync Error", calendarError);
-        alert('Event published, but failed to add to Google Calendar.');
       }
 
       if (onEventCreated) onEventCreated(date);
       onClose();
 
     } catch (error: any) {
-      alert(`Error publishing event: ${error.message}`);
+      alert(`Error saving event: ${error.message}`);
     } finally {
       setIsPublishing(false);
     }

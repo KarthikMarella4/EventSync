@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FEATURED_EVENTS, RECOMMENDED_EVENTS } from '../constants'; // Fallback
+
 import { Event, Screen } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';

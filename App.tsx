@@ -12,6 +12,7 @@ const AppContent: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [targetDate, setTargetDate] = useState<string | null>(null);
+  const [eventToEdit, setEventToEdit] = useState<any>(null);
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -22,12 +23,17 @@ const AppContent: React.FC = () => {
     return <LoginScreen />;
   }
 
+  const handleEditEvent = (event: any) => {
+    setEventToEdit(event);
+    setShowCreateModal(true);
+  };
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'home':
         return <HomeScreen onNavigate={(s) => setCurrentScreen(s)} initialSelectedDate={targetDate} />;
       case 'dashboard':
-        return <DashboardScreen />;
+        return <DashboardScreen onEditEvent={handleEditEvent} />;
       case 'gallery':
         return <GalleryScreen />;
       case 'profile':
@@ -66,7 +72,7 @@ const AppContent: React.FC = () => {
           <div className="w-12"></div>
 
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => { setEventToEdit(null); setShowCreateModal(true); }}
             className="absolute left-1/2 -translate-x-1/2 -top-10 size-14 bg-black rounded-full flex items-center justify-center text-white shadow-float hover:scale-105 active:scale-95 transition-all group"
           >
             <span className="material-symbols-outlined text-[30px] group-hover:rotate-90 transition-transform duration-300">add</span>
@@ -94,7 +100,8 @@ const AppContent: React.FC = () => {
       {showCreateModal && (
         <div className="fixed inset-0 z-[60] bg-white animate-in slide-in-from-bottom duration-300">
           <CreateEventScreen
-            onClose={() => setShowCreateModal(false)}
+            initialEvent={eventToEdit}
+            onClose={() => { setShowCreateModal(false); setEventToEdit(null); }}
             onEventCreated={(date) => {
               setTargetDate(date);
               // Also switch to home to see the calendar

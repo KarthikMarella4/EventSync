@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { USER_PROFILE } from '../constants'; // Keeping for stats currently
+
 
 const ProfileScreen: React.FC = () => {
   const { user, logout, refreshProfile } = useAuth();
@@ -29,10 +29,7 @@ const ProfileScreen: React.FC = () => {
     { name: 'Linked Accounts', icon: 'link' }
   ];
 
-  const support = [
-    { name: 'Help Center', icon: 'help' },
-    { name: 'Report an Issue', icon: 'report_problem' }
-  ];
+
 
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -375,22 +372,7 @@ const ProfileScreen: React.FC = () => {
           </div>
         </div>
 
-        <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-4 mb-3">Support</h3>
-          <div className="bg-white rounded-3xl overflow-hidden shadow-soft border border-gray-100">
-            {support.map((item, idx) => (
-              <button key={item.name} className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group ${idx < support.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                <div className="flex items-center gap-4">
-                  <div className="size-9 rounded-xl bg-gray-50 border border-gray-100 text-black flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                  </div>
-                  <span className="text-[15px] font-semibold text-black">{item.name}</span>
-                </div>
-                <span className="material-symbols-outlined text-gray-300 group-hover:text-black transition-colors text-[20px]">arrow_forward_ios</span>
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         <button
           onClick={logout}

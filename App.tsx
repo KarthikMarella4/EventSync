@@ -48,7 +48,18 @@ const AppContent: React.FC = () => {
       {/* Dynamic Content */}
       <div className="flex-1 w-full flex justify-center">
         <div className="w-full max-w-7xl bg-white min-h-screen shadow-xl">
-          {renderScreen()}
+          <div style={{ display: currentScreen === 'home' ? 'block' : 'none' }} className="h-full">
+            <HomeScreen onNavigate={(s) => setCurrentScreen(s)} initialSelectedDate={targetDate} />
+          </div>
+          <div style={{ display: currentScreen === 'dashboard' ? 'block' : 'none' }} className="h-full">
+            <DashboardScreen onEditEvent={handleEditEvent} />
+          </div>
+          <div style={{ display: currentScreen === 'gallery' ? 'block' : 'none' }} className="h-full">
+            <GalleryScreen />
+          </div>
+          <div style={{ display: currentScreen === 'profile' ? 'block' : 'none' }} className="h-full">
+            <ProfileScreen />
+          </div>
         </div>
       </div>
 

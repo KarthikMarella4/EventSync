@@ -214,7 +214,7 @@ const ProfileScreen: React.FC = () => {
         <div className="relative mb-8 group">
           <div className="h-32 w-32 rounded-full p-1 bg-white shadow-lg ring-1 ring-black/5 overflow-hidden mx-auto">
             {user?.avatar ? (
-              <div className="w-full h-full rounded-full bg-cover bg-center" style={{ backgroundImage: `url("${user.avatar}?t=${new Date().getTime()}")` }} />
+              <div className="w-full h-full rounded-full bg-cover bg-center" style={{ backgroundImage: `url("${user.avatar}")` }} />
             ) : (
               <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
                 <span className="material-symbols-outlined text-4xl text-gray-400">person</span>

@@ -35,6 +35,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       // Update month to match
       const [y, m] = initialSelectedDate.split('-').map(Number);
       setCurrentMonth(new Date(y, m - 1, 1));
+      // Refresh events to ensure the new event is shown
+      fetchEvents();
     }
   }, [initialSelectedDate]);
 
@@ -200,13 +202,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                     key={day}
                     onClick={() => setSelectedDate(dateStr)}
                     className={`size-10 flex flex-col items-center justify-center rounded-full text-sm font-semibold relative transition-all 
-                      ${isSelected ? 'bg-black text-white scale-110 shadow-lg z-10' : isToday ? 'bg-gray-200 text-black' : 'hover:bg-gray-50 text-text-main'}
+                      ${isSelected
+                        ? (hasEvent ? 'bg-red-600 text-white scale-110 shadow-lg z-10' : 'bg-black text-white scale-110 shadow-lg z-10')
+                        : isToday
+                          ? 'bg-gray-200 text-black'
+                          : (hasEvent ? 'text-red-600 font-bold bg-red-50' : 'hover:bg-gray-50 text-text-main')
+                      }
                     `}
                   >
                     <span>{day}</span>
-                    {hasEvent && !isSelected && (
-                      <span className={`absolute bottom-1.5 size-1 rounded-full ${isToday ? 'bg-black' : 'bg-accent'}`}></span>
-                    )}
                   </button>
                 );
               })}

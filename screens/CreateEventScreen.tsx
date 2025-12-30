@@ -168,6 +168,14 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
         }
       }
 
+      if (Notification.permission === 'granted') {
+        new Notification('Event Published: ' + title, {
+          body: `Happening on ${date} at ${time}`,
+        });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+
       if (onEventCreated) onEventCreated(date);
       onClose();
 

@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                scopes: 'https://www.googleapis.com/auth/calendar',
+                scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks',
                 redirectTo: window.location.origin
             }
         });

@@ -7,10 +7,13 @@ import GalleryScreen from './screens/GalleryScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import LoginScreen from './screens/LoginScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SmartPlusButton } from './components/SmartPlusButton';
+import { CreateTaskModal } from './screens/CreateTaskModal';
 
 const AppContent: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false); // Placeholder
   const [targetDate, setTargetDate] = useState<string | null>(null);
   const [eventToEdit, setEventToEdit] = useState<any>(null);
   const { user, isLoading } = useAuth();
@@ -79,18 +82,16 @@ const AppContent: React.FC = () => {
               onClick={() => setCurrentScreen('dashboard')}
               className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'dashboard' ? 'text-black' : 'text-text-muted'}`}
             >
-              <span className={`material-symbols-outlined text-[26px] ${currentScreen === 'dashboard' ? 'fill-current' : ''}`}>calendar_today</span>
-              <span className="text-[10px] font-bold">Events</span>
+              <span className={`material-symbols-outlined text-[26px] ${currentScreen === 'dashboard' ? 'fill-current' : ''}`}>calendar_month</span>
+              <span className="text-[10px] font-bold">Calendar</span>
             </button>
 
-            <div className="w-12"></div>
 
-            <button
-              onClick={() => { setEventToEdit(null); setShowCreateModal(true); }}
-              className="absolute left-1/2 -translate-x-1/2 -top-10 size-14 bg-black rounded-full flex items-center justify-center text-white shadow-float hover:scale-105 active:scale-95 transition-all group"
-            >
-              <span className="material-symbols-outlined text-[30px] group-hover:rotate-90 transition-transform duration-300">add</span>
-            </button>
+            <SmartPlusButton
+              onCreateEvent={() => { setEventToEdit(null); setShowCreateModal(true); }}
+              onCreateTask={() => setShowCreateTaskModal(true)}
+              onAddPhoto={() => setCurrentScreen('gallery')}
+            />
 
             <button
               onClick={() => setCurrentScreen('gallery')}
@@ -121,6 +122,22 @@ const AppContent: React.FC = () => {
               onEventCreated={(date) => {
                 setTargetDate(date);
                 // Also switch to home to see the calendar
+                setCurrentScreen('home');
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Task Modal */}
+      {showCreateTaskModal && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full h-full sm:h-[85vh] sm:max-w-lg sm:rounded-3xl bg-white shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 flex flex-col">
+            <CreateTaskModal
+              onClose={() => setShowCreateTaskModal(false)}
+              onTaskCreated={() => {
+                // Refresh home or handle caching? For now just switching to home forces re-render if key changes, but we might relying on HomeScreen polling/fetch on mount.
+                // A better way is needed but for now simple close is fine as HomeScreen fetches on mount.
                 setCurrentScreen('home');
               }}
             />

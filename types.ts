@@ -23,6 +23,7 @@ export interface Event {
   attendeesAvatars?: string[];
   status?: 'going' | 'waitlist' | 'invited' | 'hosted';
   creatorId?: string;
+  googleCalendarEventId?: string;
 }
 
 export interface Photo {
@@ -35,4 +36,27 @@ export interface Photo {
     color?: string;
   };
   isFavorite?: boolean;
+}
+
+export interface Task {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  dueDate?: string; // ISO string
+  isCompleted: boolean;
+  reminderTime?: string; // ISO string
+  createdAt: string;
+}
+
+export type NotificationType = 'reminder' | 'invite' | 'update' | 'photo';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  message: string;
+  isRead: boolean;
+  relatedId?: string;
+  createdAt: string;
 }

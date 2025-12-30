@@ -5,12 +5,14 @@ interface DashboardScreenProps {
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Event } from '../types';
+import { Event, Task } from '../types';
+import { TaskItem } from '../components/TaskItem';
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'hosting' | 'past'>('upcoming');
+  const [activeTab, setActiveTab] = useState<'calendar' | 'tasks'>('calendar');
   const [events, setEvents] = useState<Event[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -26,19 +28,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
 
   const fetchUserEvents = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch Events
+      const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select('*')
         .eq('creator_id', user?.id)
         .order('date', { ascending: true });
 
-      if (error) throw error;
-
-      if (data) {
-        const mappedEvents: Event[] = data.map((e: any) => ({
+      if (eventData) {
+        const mappedEvents: Event[] = eventData.map((e: any) => ({
           id: e.id,
           title: e.title,
-          description: e.description, // Added description for editing
+          description: e.description,
           date: e.date,
           time: e.time,
           location: e.location,
@@ -49,8 +50,34 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
         }));
         setEvents(mappedEvents);
       }
+
+      // Fetch Tasks
+      const { data: taskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (taskData) {
+        setTasks(taskData.map((t: any) => ({
+          id: t.id,
+          userId: t.user_id,
+          title: t.title,
+          description: t.description,
+          dueDate: t.due_date,
+          isCompleted: t.is_completed,
+          reminderTime: t.reminder_time,
+          createdAt: t.created_at
+        })));
+      } else {
+        // Mock
+        setTasks([
+          { id: '1', userId: 'u1', title: 'Buy Event Supplies', isCompleted: false, dueDate: new Date().toISOString(), createdAt: '', description: 'Balloons' }
+        ]);
+      }
+
     } catch (error) {
-      console.error('Error fetching user events:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -156,8 +183,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
               style={{ backgroundImage: `url("${user?.avatar || 'https://ui-avatars.com/api/?name=' + user?.name}")` }}
             />
             <div>
-              <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">Dashboard</p>
-              <h1 className="text-xl font-bold leading-tight text-black">My Events</h1>
+              <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">Unified View</p>
+              <h1 className="text-xl font-bold leading-tight text-black">Calendar</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -238,50 +265,56 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
         )}
       </section>
 
-      {/* Tabs */}
-      <section className="mt-8">
-        <div className="sticky top-[73px] z-20 bg-white pt-2 pb-4 border-b border-transparent">
-          <div className="mx-5 bg-surface p-1.5 rounded-2xl flex border border-border-light">
-            {['upcoming', 'hosting', 'past'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as any)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold capitalize transition-all ${activeTab === tab ? 'bg-white text-black shadow-sm ring-1 ring-black/5' : 'text-text-muted hover:text-black'
-                  }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+      {/* Tabs / Filter */}
+      <section className="mt-8 px-5">
+        <div className="bg-surface p-1 rounded-2xl flex border border-border-light mb-6">
+          <button
+            onClick={() => setActiveTab('calendar')}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'calendar' ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}
+          >
+            Events ({filteredEvents.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'tasks' ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}
+          >
+            Tasks ({tasks.length})
+          </button>
         </div>
 
-        {/* List - Using same events list for now as a "Feed" */}
-        <div className="px-5 flex flex-col gap-6 mt-4">
-          <div className="flex items-center gap-4">
-            {/* Dynamic Header based on logic, keeping simple for now */}
-            <p className="text-sm font-bold text-text-muted uppercase tracking-wider">Your Timeline</p>
-            <div className="h-[1px] flex-1 bg-border-light"></div>
-          </div>
-
-          {filteredEvents.map(event => (
-            <div key={event.id} className="group relative bg-white rounded-3xl p-5 flex gap-5 shadow-sharp border border-border-light hover:border-black/20 active:scale-[0.99] transition-all">
-              <div className="flex-none w-16 flex flex-col items-center justify-center bg-black text-white rounded-2xl py-3 h-fit shadow-md shadow-black/20">
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
-                <span className="text-2xl font-bold">{new Date(event.date).getDate()}</span>
-              </div>
-              <div className="flex-1 flex flex-col justify-center gap-1.5">
-                <h3 className="text-lg font-bold text-black leading-tight">{event.title}</h3>
-                <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-text-muted">
-                  <span className="flex items-center gap-1 bg-surface px-2 py-0.5 rounded-md border border-border-light"><span className="material-symbols-outlined text-[16px]">schedule</span> {formatTime(event.time)}</span>
-                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">location_on</span> {event.location}</span>
+        <div className="flex flex-col gap-4 pb-20">
+          {activeTab === 'calendar' ? (
+            filteredEvents.map(event => (
+              <div key={event.id} className="group relative bg-white rounded-3xl p-5 flex gap-5 shadow-sharp border border-border-light hover:border-black/20 active:scale-[0.99] transition-all">
+                <div className="flex-none w-16 flex flex-col items-center justify-center bg-black text-white rounded-2xl py-3 h-fit shadow-md shadow-black/20">
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
+                  <span className="text-2xl font-bold">{new Date(event.date).getDate()}</span>
+                </div>
+                <div className="flex-1 flex flex-col justify-center gap-1.5">
+                  <h3 className="text-lg font-bold text-black leading-tight">{event.title}</h3>
+                  <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-text-muted">
+                    <span className="flex items-center gap-1 bg-surface px-2 py-0.5 rounded-md border border-border-light"><span className="material-symbols-outlined text-[16px]">schedule</span> {formatTime(event.time)}</span>
+                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">location_on</span> {event.location}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end justify-between gap-2">
+                  <div className="h-14 w-14 rounded-full bg-cover bg-center border-2 border-surface-dark shadow-sm" style={{ backgroundImage: `url("${event.imageUrl}")` }}></div>
+                  <span className="px-2.5 py-1 rounded-lg bg-green-50 text-green-700 border border-green-100 text-[10px] font-bold uppercase tracking-wide">Hosting</span>
                 </div>
               </div>
-              <div className="flex flex-col items-end justify-between gap-2">
-                <div className="h-14 w-14 rounded-full bg-cover bg-center border-2 border-surface-dark shadow-sm" style={{ backgroundImage: `url("${event.imageUrl}")` }}></div>
-                <span className="px-2.5 py-1 rounded-lg bg-green-50 text-green-700 border border-green-100 text-[10px] font-bold uppercase tracking-wide">Hosting</span>
-              </div>
+            ))
+          ) : (
+            <div className="flex flex-col gap-3">
+              {tasks.length === 0 && <p className="text-center text-gray-400 py-10">No tasks found.</p>}
+              {tasks.map(task => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
+                />
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </section>
     </div>

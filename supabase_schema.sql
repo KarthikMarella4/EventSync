@@ -110,4 +110,103 @@ create policy "Users can delete their own event images." on storage.objects for 
 
 -- Additional Policies for event_photos
 drop policy if exists "Users can delete their own photos." on event_photos;
-create policy "Users can delete their own photos." on event_photos for delete using ( auth.uid() = user_id );
+-- 5. TASKS TABLE
+create table if not exists tasks (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  user_id uuid references profiles(id) on delete cascade not null,
+  title text not null,
+  description text,
+  due_date timestamp with time zone,
+  is_completed boolean default false,
+  is_overdue boolean default false, -- Can be calculated, but storing for simple querying/updates
+  google_task_id text,
+  google_calendar_event_id text
+);
+
+-- Safely add the columns if they don't exist
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_name = 'tasks' and column_name = 'google_task_id') then
+    alter table tasks add column google_task_id text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name = 'tasks' and column_name = 'google_calendar_event_id') then
+    alter table tasks add column google_calendar_event_id text;
+  end if;
+end $$;
+
+alter table tasks enable row level security;
+
+-- Policies for Tasks
+drop policy if exists "Users can view their own tasks." on tasks;
+create policy "Users can view their own tasks." on tasks for select using ( auth.uid() = user_id );
+
+drop policy if exists "Users can insert their own tasks." on tasks;
+create policy "Users can insert their own tasks." on tasks for insert with check ( auth.uid() = user_id );
+
+drop policy if exists "Users can update their own tasks." on tasks;
+create policy "Users can update their own tasks." on tasks for update using ( auth.uid() = user_id );
+
+drop policy if exists "Users can delete their own tasks." on tasks;
+create policy "Users can delete their own tasks." on tasks for delete using ( auth.uid() = user_id );
+
+-- 6. NOTIFICATIONS TABLE
+create table if not exists notifications (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  user_id uuid references profiles(id) on delete cascade not null,
+  type text not null check (type in ('reminder', 'invite', 'update', 'photo')),
+  message text not null,
+  is_read boolean default false,
+  related_id uuid -- Can reference event_id, task_id, etc.
+);
+
+alter table notifications enable row level security;
+
+-- Policies for Notifications
+drop policy if exists "Users can view their own notifications." on notifications;
+create policy "Users can view their own notifications." on notifications for select using ( auth.uid() = user_id );
+
+drop policy if exists "Users can update their own notifications." on notifications; -- To mark as read
+create policy "Users can update their own notifications." on notifications for update using ( auth.uid() = user_id );
+
+
+-- 7. FIXES & MIGRATIONS
+
+-- Enable Realtime for tasks and event_photos (Idempotent)
+do $$
+begin
+  alter publication supabase_realtime add table tasks;
+exception when duplicate_object then
+  null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table event_photos;
+exception when duplicate_object then
+  null;
+end $$;
+
+-- Fix Events -> Profiles Relationship for Gallery
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.table_constraints 
+    where constraint_name = 'events_creator_id_profiles_fkey'
+  ) then
+    alter table events add constraint events_creator_id_profiles_fkey foreign key (creator_id) references profiles(id);
+  end if;
+exception when others then
+  null; 
+end $$;
+
+-- Trigger removed to avoid permission errors (42501). 
+-- If you need automatic profile creation, please set it up in the Supabase Dashboard > Authentication > Triggers.
+
+-- Fix for existing users with missing profiles:
+insert into public.profiles (id, full_name, avatar_url, username)
+select id, raw_user_meta_data->>'full_name', raw_user_meta_data->>'avatar_url', email
+from auth.users
+where id not in (select id from public.profiles)
+on conflict do nothing;

@@ -9,29 +9,30 @@ const GalleryScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const [activeTab, setActiveTab] = useState('Recent');
+
   useEffect(() => {
     fetchPhotos();
+
+    // Realtime Subscription for new uploads
+    const channel = supabase
+      .channel('gallery_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_photos' }, () => {
+        fetchPhotos();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPhotos = async () => {
     try {
       setLoading(true);
 
-      // 1. Fetch Event Covers
-      const coversPromise = supabase
-        .from('events')
-        .select(`
-          id,
-          title,
-          image_url,
-          created_at,
-          creator_id,
-          profiles:creator_id (auth_id:id, full_name, avatar_url, username)
-        `)
-        .not('image_url', 'is', null);
-
-      // 2. Fetch Uploaded Photos
-      const uploadsPromise = supabase
+      // Only Fetch Uploaded Photos (User requested to remove event covers)
+      const { data, error } = await supabase
         .from('event_photos')
         .select(`
           id,
@@ -40,36 +41,20 @@ const GalleryScreen: React.FC = () => {
           user_id,
           events (title),
           profiles:user_id (full_name, avatar_url, username)
-        `);
+        `)
+        .order('created_at', { ascending: false });
 
-      const [coversResult, uploadsResult] = await Promise.all([coversPromise, uploadsPromise]);
+      console.log('Gallery: Fetched Data:', data);
+      console.log('Gallery: Fetch Error:', error);
 
-      // Process Covers
-      let mappedCovers: any[] = [];
-      if (coversResult.data) {
-        mappedCovers = coversResult.data.map((e: any) => ({
-          id: e.id,
-          url: e.image_url,
-          title: e.title,
-          type: 'Cover',
-          userId: e.creator_id,
-          createdAt: new Date(e.created_at).getTime(),
-          user: {
-            handle: e.profiles?.username || e.profiles?.full_name || 'User',
-            avatar: e.profiles?.avatar_url,
-            initials: (e.profiles?.full_name || 'U').charAt(0).toUpperCase(),
-            color: 'bg-blue-500'
-          }
-        }));
-      }
+      if (error) throw error;
 
-      // Process Uploads
       let mappedUploads: any[] = [];
-      if (uploadsResult.data) {
-        mappedUploads = uploadsResult.data.map((p: any) => ({
+      if (data) {
+        mappedUploads = data.map((p: any) => ({
           id: p.id,
           url: p.photo_url,
-          title: p.events?.title || 'Event Photo',
+          title: p.events?.title || 'Unknown Event',
           type: 'Upload',
           userId: p.user_id,
           createdAt: new Date(p.created_at).getTime(),
@@ -77,14 +62,12 @@ const GalleryScreen: React.FC = () => {
             handle: p.profiles?.username || p.profiles?.full_name || 'User',
             avatar: p.profiles?.avatar_url,
             initials: (p.profiles?.full_name || 'U').charAt(0).toUpperCase(),
-            color: 'bg-green-500'
+            color: 'bg-green-500' // could randomize
           }
         }));
       }
 
-      // Merge and Sort
-      const allPhotos = [...mappedCovers, ...mappedUploads].sort((a, b) => b.createdAt - a.createdAt);
-      setPhotos(allPhotos);
+      setPhotos(mappedUploads);
 
     } catch (error) {
       console.error('Unexpected error in fetchPhotos:', error);
@@ -98,23 +81,19 @@ const GalleryScreen: React.FC = () => {
 
     setDeletingId(photo.id);
     try {
-      if (photo.type === 'Upload') {
-        // Extract storage path from URL
-        const urlParts = photo.url.split('/event-images/');
-        if (urlParts.length > 1) {
-          const storagePath = urlParts[1];
-          await supabase.storage.from('event-images').remove([storagePath]);
-        }
-
-        const { error } = await supabase.from('event_photos').delete().eq('id', photo.id);
-        if (error) throw error;
-      } else {
-        // Cover Image - Just unlink from event
-        const { error } = await supabase.from('events').update({ image_url: null }).eq('id', photo.id);
-        if (error) throw error;
+      // Extract storage path from URL
+      const urlParts = photo.url.split('/event-images/');
+      if (urlParts.length > 1) {
+        const storagePath = urlParts[1];
+        await supabase.storage.from('event-images').remove([storagePath]);
       }
 
+      const { error } = await supabase.from('event_photos').delete().eq('id', photo.id);
+      if (error) throw error;
+
+      // Optimistic update
       setPhotos(prev => prev.filter(p => p.id !== photo.id));
+
     } catch (error: any) {
       console.error('Delete failed:', error);
       alert('Failed to delete photo: ' + error.message);
@@ -124,7 +103,14 @@ const GalleryScreen: React.FC = () => {
   };
 
   // Filter Logic
+  // Filter Logic
   const filteredPhotos = photos.filter(p => {
+    // 1. Tab Filter
+    if (activeTab === 'My Uploads') {
+      if (p.userId !== user?.id) return false;
+    }
+
+    // 2. Search Filter
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return p.title.toLowerCase().includes(q) || p.user.handle.toLowerCase().includes(q);
@@ -140,7 +126,12 @@ const GalleryScreen: React.FC = () => {
               <span className="material-symbols-outlined text-text-main">arrow_back_ios_new</span>
             </button>
             <div className="flex flex-col items-center flex-1 mx-2">
-              <h2 className="text-text-main text-base font-bold leading-tight tracking-tight text-center line-clamp-1">Event Gallery</h2>
+              <div className="flex items-center gap-1">
+                <h2 className="text-text-main text-base font-bold leading-tight tracking-tight text-center line-clamp-1">Event Gallery</h2>
+                <button onClick={fetchPhotos} className="p-1 hover:bg-gray-100 rounded-full" title="Refresh">
+                  <span className={`material-symbols-outlined text-[16px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                </button>
+              </div>
               <p className="text-xs text-text-muted font-medium">{filteredPhotos.length} Photos</p>
             </div>
             <button className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
@@ -184,19 +175,23 @@ const GalleryScreen: React.FC = () => {
         {/* Filter Tabs */}
         <section className="w-full overflow-x-auto no-scrollbar pb-2 px-4 sticky top-[120px] z-20 bg-white pt-2">
           <div className="flex gap-2">
-            <button className="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-black pl-5 pr-5 shadow-md shadow-black/20 hover:scale-105 transition-transform">
-              <p className="text-white text-sm font-bold">All Photos</p>
+            <button
+              onClick={() => setActiveTab('Recent')}
+              className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 transition-all ${activeTab === 'Recent' ? 'bg-black text-white shadow-md' : 'bg-white text-slate-700 border border-slate-200'}`}
+            >
+              <p className="text-sm font-bold">All Photos</p>
             </button>
-            {['Recent', 'My Uploads'].map(tab => (
-              <button key={tab} className="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white border border-slate-200 px-4 hover:bg-slate-50 hover:border-slate-300 transition-all">
-                <p className="text-slate-700 text-sm font-semibold">{tab}</p>
-              </button>
-            ))}
+            <button
+              onClick={() => setActiveTab('My Uploads')}
+              className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 transition-all ${activeTab === 'My Uploads' ? 'bg-black text-white shadow-md' : 'bg-white text-slate-700 border border-slate-200'}`}
+            >
+              <p className="text-sm font-bold">My Uploads</p>
+            </button>
           </div>
         </section>
 
         {/* Masonry Grid with Tailwind Columns */}
-        <div className="flex-1 px-4 pb-12 mt-4">
+        <div className="flex-1 px-4 pb-12 mt-4 space-y-8">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-2">
               <span className="material-symbols-outlined text-4xl animate-pulse">image</span>
@@ -208,58 +203,50 @@ const GalleryScreen: React.FC = () => {
               <p className="text-sm font-medium">{searchQuery ? 'No photos found matching your search.' : 'No photos yet. Create an event!'}</p>
             </div>
           ) : (
-            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-              {filteredPhotos.map(photo => (
-                <div key={photo.id} className="break-inside-avoid relative group overflow-hidden rounded-2xl bg-slate-100 shadow-sm hover:shadow-md transition-all">
-                  <img
-                    src={photo.url}
-                    className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
-                    alt={photo.title}
-                    loading="lazy"
-                  />
+            // Grouping Logic Implementation inside the render
+            (() => {
+              // Group the filtered photos
+              const groups: { [key: string]: typeof photos } = {};
+              filteredPhotos.forEach(p => {
+                const key = p.title || 'Ungrouped';
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(p);
+              });
 
-                  {/* Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-100 transition-opacity duration-300">
+              return Object.entries(groups).map(([groupTitle, groupPhotos]) => (
+                <div key={groupTitle}>
+                  <h3 className="text-xl font-bold text-black mb-3 ml-1 sticky top-[160px] z-10 bg-white/50 backdrop-blur-sm py-1 max-w-fit px-3 rounded-xl">{groupTitle}</h3>
+                  <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+                    {groupPhotos.map(photo => (
+                      <div key={photo.id} className="break-inside-avoid relative group overflow-hidden rounded-2xl bg-slate-100 shadow-sm hover:shadow-md transition-all">
+                        <img src={photo.url} className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" alt={photo.title} loading="lazy" />
 
-                    {/* Top Controls */}
-                    <div className="absolute top-2 right-2 flex gap-2 opacity-100">
-                      {/* Delete Button (Owner Only) */}
-                      {user?.id === photo.userId && (
-                        <button
-                          onClick={(e) => { e.preventDefault(); handleDelete(photo); }}
-                          className="bg-red-500/80 hover:bg-red-600 backdrop-blur-md rounded-full p-1.5 flex items-center justify-center text-white transition-colors z-20"
-                          disabled={deletingId === photo.id}
-                        >
-                          {deletingId === photo.id ? (
-                            <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                          ) : (
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                          )}
-                        </button>
-                      )}
-                      <button className="bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full p-1.5 flex items-center justify-center text-white transition-colors">
-                        <span className="material-symbols-outlined text-[16px]">favorite_border</span>
-                      </button>
-                    </div>
-
-                    {/* Bottom Info */}
-                    <div className="absolute bottom-0 left-0 p-3 w-full">
-                      <p className="text-white text-xs font-bold truncate mb-1.5 drop-shadow-md">{photo.title}</p>
-                      <div className="flex items-center gap-2">
-                        {photo.user.avatar ? (
-                          <img src={photo.user.avatar} className="size-5 rounded-full border border-white/40 object-cover" alt="Avatar" />
-                        ) : (
-                          <div className={`size-5 rounded-full border border-white/40 flex items-center justify-center text-[8px] text-white font-bold ${photo.user.color || 'bg-black'}`}>
-                            {photo.user.initials}
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="absolute top-2 right-2 flex gap-2">
+                            {user?.id === photo.userId && (
+                              <button onClick={(e) => { e.preventDefault(); handleDelete(photo); }} className="bg-red-500/80 hover:bg-red-600 backdrop-blur-md rounded-full p-1.5 flex items-center justify-center text-white transition-colors">
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            )}
                           </div>
-                        )}
-                        <span className="text-white/90 text-[10px] font-medium truncate drop-shadow-md">{photo.user.handle}</span>
+                          <div className="absolute bottom-0 left-0 p-3 w-full">
+                            <div className="flex items-center gap-2">
+                              {photo.user.avatar ? (
+                                <img src={photo.user.avatar} className="size-5 rounded-full border border-white/40 object-cover" alt="Avatar" />
+                              ) : (
+                                <div className={`size-5 rounded-full border border-white/40 flex items-center justify-center text-[8px] text-white font-bold ${photo.user.color || 'bg-black'}`}>{photo.user.initials}</div>
+                              )}
+                              <span className="text-white/90 text-[10px] font-medium truncate drop-shadow-md">{photo.user.handle}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              ));
+            })()
           )}
         </div>
       </div>

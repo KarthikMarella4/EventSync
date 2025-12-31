@@ -156,7 +156,7 @@ export const TicketsListModal: React.FC<TicketsListModalProps> = ({ onClose }) =
                                     {/* Delete Button (Top Left - consistent with events) */}
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDelete(ticket); }}
-                                        className="absolute top-3 left-3 size-8 bg-red-500/80 hover:bg-red-600 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute top-3 left-3 size-8 bg-red-500/80 hover:bg-red-600 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                                         title="Delete"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">delete</span>

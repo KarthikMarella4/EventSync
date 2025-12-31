@@ -338,6 +338,7 @@ begin
 end $$;
 
 -- 11. FIX GALLERY VISIBILITY
--- Ensure event photos are visible to everyone (or at least authenticated users)
+-- Ensure event photos are ONLY visible to the user who uploaded them (Private Gallery)
 drop policy if exists "Photos are viewable by everyone." on event_photos;
-create policy "Photos are viewable by everyone." on event_photos for select using ( true );
+drop policy if exists "Users can view their own photos." on event_photos; -- Ensure clean slate
+create policy "Users can view their own photos." on event_photos for select using ( auth.uid() = user_id );

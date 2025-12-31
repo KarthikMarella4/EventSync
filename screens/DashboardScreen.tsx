@@ -176,23 +176,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-4 border-b border-border-light space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="h-10 w-10 rounded-full bg-surface border border-border-light shadow-sm bg-cover bg-center"
-              style={{ backgroundImage: `url("${user?.avatar || 'https://ui-avatars.com/api/?name=' + user?.name}")` }}
-            />
-            <div>
-              <p className="text-xs text-text-muted font-semibold uppercase tracking-wide">Unified View</p>
-              <h1 className="text-xl font-bold leading-tight text-black">Calendar</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2.5 rounded-full hover:bg-surface relative">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-            </button>
-          </div>
+        <div className="flex items-center justify-center pt-2">
+          <h1 className="text-xl font-bold leading-tight text-black">Calendar</h1>
         </div>
 
         {/* Search Bar */}

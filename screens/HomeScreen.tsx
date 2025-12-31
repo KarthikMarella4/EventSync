@@ -615,9 +615,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button className="size-12 shrink-0 flex items-center justify-center rounded-2xl bg-surface border border-border-light hover:bg-gray-100 transition-colors shadow-sm">
-            <span className="material-symbols-outlined text-[24px] text-text-main">tune</span>
-          </button>
         </div>
       </div>
 

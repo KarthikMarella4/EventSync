@@ -172,22 +172,9 @@ const GalleryScreen: React.FC = () => {
       <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
         {/* Header */}
         <header className="sticky top-0 z-30 flex flex-col gap-2 p-4 bg-white/95 backdrop-blur-md border-b border-slate-100 transition-all">
-          <div className="flex items-center justify-between">
-            <button className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
-              <span className="material-symbols-outlined text-text-main">arrow_back_ios_new</span>
-            </button>
-            <div className="flex flex-col items-center flex-1 mx-2">
-              <div className="flex items-center gap-1">
-                <h2 className="text-text-main text-base font-bold leading-tight tracking-tight text-center line-clamp-1">Event Gallery</h2>
-                <button onClick={fetchPhotos} className="p-1 hover:bg-gray-100 rounded-full" title="Refresh">
-                  <span className={`material-symbols-outlined text-[16px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
-                </button>
-              </div>
-              <p className="text-xs text-text-muted font-medium">{filteredPhotos.length} Photos</p>
-            </div>
-            <button className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
-              <span className="material-symbols-outlined text-text-main">ios_share</span>
-            </button>
+          <div className="flex items-center justify-center">
+            <h2 className="text-text-main text-lg font-bold leading-tight tracking-tight text-center">Event Gallery</h2>
+            <p className="text-xs text-text-muted font-medium absolute right-4">{filteredPhotos.length} Photos</p>
           </div>
 
           {/* Search Bar */}
@@ -206,20 +193,20 @@ const GalleryScreen: React.FC = () => {
         </header>
 
         {/* Stats */}
-        <section className="flex gap-3 px-4 py-4 w-full">
-          <div className="flex flex-1 flex-col gap-1 rounded-xl bg-white p-3 border border-slate-200 items-center text-center shadow-sm hover:border-slate-300 transition-colors cursor-pointer">
+        <section className="flex gap-4 px-4 py-6 w-full">
+          <div className="flex flex-1 flex-col gap-2 rounded-2xl bg-white p-6 border border-slate-200 items-center text-center shadow-sm hover:border-slate-300 transition-colors cursor-pointer active:scale-95">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-xl">photo_library</span>
+              <span className="material-symbols-outlined text-primary text-2xl">photo_library</span>
               <p className="text-text-muted text-xs font-bold uppercase tracking-wider">Total</p>
             </div>
-            <p className="text-text-main text-2xl font-bold leading-tight">{photos.length}</p>
+            <p className="text-text-main text-3xl font-black leading-tight">{photos.length}</p>
           </div>
-          <div className="flex flex-1 flex-col gap-1 rounded-xl bg-white p-3 border border-slate-200 items-center text-center shadow-sm hover:border-slate-300 transition-colors cursor-pointer">
+          <div className="flex flex-1 flex-col gap-2 rounded-2xl bg-white p-6 border border-slate-200 items-center text-center shadow-sm hover:border-slate-300 transition-colors cursor-pointer active:scale-95">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-green-500 text-xl">cloud_upload</span>
+              <span className="material-symbols-outlined text-green-500 text-2xl">cloud_upload</span>
               <p className="text-text-muted text-xs font-bold uppercase tracking-wider">Uploads</p>
             </div>
-            <p className="text-text-main text-2xl font-bold leading-tight">{photos.filter(p => p.type === 'Upload').length}</p>
+            <p className="text-text-main text-3xl font-black leading-tight">{photos.filter(p => p.type === 'Upload').length}</p>
           </div>
         </section>
 

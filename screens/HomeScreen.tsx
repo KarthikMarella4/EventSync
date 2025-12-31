@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Event, Screen, Task } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { deleteCalendarEvent } from '../lib/googleCalendar';
-import { deleteGoogleTask, listGoogleTasks } from '../lib/googleTasks';
+import { deleteCalendarEvent, listCalendarEvents } from '../lib/googleCalendar';
+import { deleteGoogleTask, listGoogleTasks, updateGoogleTask } from '../lib/googleTasks';
 import { ReminderButton } from '../components/ReminderButton';
 import { TaskItem } from '../components/TaskItem';
 import { NotificationCenter } from '../components/NotificationCenter';
@@ -83,7 +83,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         .from('tasks')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('is_completed', false)
         .order('due_date', { ascending: true }); // Show soonest first
 
       if (data) {
@@ -94,7 +93,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
           description: t.description,
           dueDate: t.due_date,
           isCompleted: t.is_completed,
-          createdAt: t.created_at
+          createdAt: t.created_at,
+          googleTaskId: t.google_task_id,
+          googleCalendarEventId: t.google_calendar_event_id
         })));
       }
     } catch (error) {
@@ -102,8 +103,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
     }
   };
 
-  const handleTaskUpdate = (updated: Task) => {
+  const handleTaskUpdate = async (updated: Task) => {
+    // Optimistic Update Local State
     setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+
+    // Sync to Google
+    if (updated.googleTaskId) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.provider_token;
+        if (token) {
+          await updateGoogleTask(updated.googleTaskId, {
+            status: updated.isCompleted ? 'completed' : 'needsAction'
+          }, token);
+          console.log('Synced task status to Google:', updated.title);
+        }
+      } catch (err) {
+        console.error('Failed to sync task update to Google', err);
+      }
+    }
   };
 
   // Filter effect
@@ -174,6 +192,49 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
     // Sync Google Tasks Status
     syncGoogleTasks();
+    // Sync Google Events Deletion
+    syncGoogleEvents();
+  };
+
+  const syncGoogleEvents = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = session?.provider_token;
+      if (!providerToken) return;
+
+      // Fetch Google Events for a wide range (e.g. current month view +/- buffer)
+      // Ideally we fetch based on the 'currentMonth' state, but for simplicity let's do "Now to 6 months"
+      // to catch future events. Past events might be less critical or handled when viewing past months.
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1); // Look back 1 month
+      const end = new Date();
+      end.setMonth(end.getMonth() + 6); // Look forward 6 months
+
+      const googleEvents = await listCalendarEvents(providerToken, start.toISOString(), end.toISOString());
+
+      // Find local events that have a Google ID but are NOT in the fetched list
+      // Filter local events to only those within our fetch range to avoid accidental deletion
+      const localEventsToCheck = allEvents.filter(e => {
+        if (!e.googleCalendarEventId) return false;
+        const eDate = new Date(e.date);
+        return eDate >= start && eDate <= end;
+      });
+
+      for (const localEvent of localEventsToCheck) {
+        const existsInGoogle = googleEvents.find((ge: any) => ge.id === localEvent.googleCalendarEventId);
+        if (!existsInGoogle) {
+          // Determine if it was cancelled
+          // Note: listCalendarEvents by default hides cancelled. If it's missing, it's deleted/cancelled.
+          console.log('Event deleted in Google, syncing deletion:', localEvent.title);
+          await supabase.from('events').delete().eq('id', localEvent.id);
+          // Update local state immediately
+          setAllEvents(prev => prev.filter(e => e.id !== localEvent.id));
+        }
+      }
+
+    } catch (err) {
+      console.error('Event Sync Error', err);
+    }
   };
 
   const syncGoogleTasks = async () => {
@@ -192,14 +253,29 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         .eq('user_id', user?.id)
         .eq('is_completed', false);
 
-      if (localTasks && googleTasks.length > 0) {
+      if (localTasks && googleTasks) {
+        const isListTruncated = googleTasks.length === 100; // Safety check for pagination
+        console.log(`[Sync] Found ${localTasks.length} local tasks and ${googleTasks.length} Google tasks. Truncated? ${isListTruncated}`);
+
         for (const localTask of localTasks) {
           if (localTask.google_task_id) {
             const googleTask = googleTasks.find((gt: any) => gt.id === localTask.google_task_id);
-            // 'status' can be 'needsAction' or 'completed'
-            if (googleTask && googleTask.status === 'completed') {
-              console.log('Syncing completed task:', localTask.title);
-              await supabase.from('tasks').update({ is_completed: true }).eq('id', localTask.id);
+
+            if (!googleTask) {
+              console.log(`[Sync] Local task '${localTask.title}' (ID: ${localTask.google_task_id}) NOT found in Google List.`);
+              // Task has ID but not in Google List -> Deleted?
+              if (!isListTruncated) {
+                console.log('Task deleted in Google, syncing deletion:', localTask.title);
+                await supabase.from('tasks').delete().eq('id', localTask.id);
+              } else {
+                console.warn('Task missing from Google list, but list truncated. Skipping auto-delete.', localTask.title);
+              }
+            } else {
+              console.log(`[Sync] Task '${localTask.title}' found. Status: ${googleTask.status}`);
+              if (googleTask.status === 'completed') {
+                console.log('Syncing completed task:', localTask.title);
+                await supabase.from('tasks').update({ is_completed: true }).eq('id', localTask.id);
+              }
             }
           }
         }
@@ -243,10 +319,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
           const { data: { session } } = await supabase.auth.getSession();
           const providerToken = session?.provider_token;
           if (providerToken) {
+            console.log('Attempting to delete Google Event:', eventData.google_calendar_event_id);
             await deleteCalendarEvent(eventData.google_calendar_event_id, providerToken);
+          } else {
+            console.warn('No provider token found with session, skipping Google delete.');
+            alert('Note: Could not delete from Google Calendar (Session expired). Please re-login.');
           }
-        } catch (googleError) {
+        } catch (googleError: any) {
           console.error("Failed to delete from Google Calendar", googleError);
+          alert(`Failed to delete from Google Calendar: ${googleError.message}`);
         }
       }
 
@@ -280,20 +361,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         // 1. Delete from Google Tasks
         if (taskData?.google_task_id) {
           try {
+            console.log('Deleting Google Task:', taskData.google_task_id);
             await deleteGoogleTask(taskData.google_task_id, providerToken);
-          } catch (err) {
+          } catch (err: any) {
             console.error("Failed to delete from Google Tasks", err);
+            alert(`Failed to sync task deletion: ${err.message}`);
           }
         }
 
         // 2. Delete from Google Calendar (if exists)
         if (taskData?.google_calendar_event_id) {
           try {
+            console.log('Deleting Google Calendar Event for Task:', taskData.google_calendar_event_id);
             await deleteCalendarEvent(taskData.google_calendar_event_id, providerToken);
-          } catch (err) {
+          } catch (err: any) {
             console.error("Failed to delete from Google Calendar", err);
+            alert(`Failed to delete Calendar Event for Task: ${err.message}`);
           }
         }
+      } else {
+        console.warn('No provider token, skipping Google sync');
+        alert('Note: Could not sync deletion to Google (Session expired). Please re-login.');
       }
 
       // 2. Delete from Supabase
@@ -729,10 +817,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
             </div>
 
             <div className="flex flex-col gap-3">
-              {tasks.length === 0 ? (
+              {tasks.filter(t => !t.isCompleted).length === 0 ? (
                 <p className="text-gray-400 text-sm">No tasks pending. Great job!</p>
               ) : (
-                tasks.slice(0, 3).map(task => (
+                tasks.filter(t => !t.isCompleted).slice(0, 3).map(task => (
                   <TaskItem
                     key={task.id}
                     task={task}

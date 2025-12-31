@@ -47,6 +47,8 @@ export interface Task {
   isCompleted: boolean;
   reminderTime?: string; // ISO string
   createdAt: string;
+  googleTaskId?: string;
+  googleCalendarEventId?: string;
 }
 
 export type NotificationType = 'reminder' | 'invite' | 'update' | 'photo';

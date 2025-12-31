@@ -66,6 +66,12 @@ export const deleteCalendarEvent = async (eventId: string, providerToken: string
         });
 
         if (!response.ok) {
+            // If 410 (Gone) or 404 (Not Found), it's effectively deleted.
+            if (response.status === 410 || response.status === 404) {
+                console.warn('Event already deleted from Google Calendar.');
+                return true;
+            }
+
             const data = await response.json();
             console.error('Calendar Delete Error:', data);
             throw new Error(data.error?.message || 'Failed to delete calendar event');
@@ -74,8 +80,7 @@ export const deleteCalendarEvent = async (eventId: string, providerToken: string
         return true;
     } catch (error) {
         console.error('Error in deleteCalendarEvent:', error);
-        // Don't throw, just log. We still want to delete from our app even if Google fails.
-        return false;
+        throw error; // Propagate error to caller
     }
 };
 
@@ -102,5 +107,35 @@ export const updateCalendarEvent = async (eventId: string, updates: any, provide
     } catch (error) {
         console.error('Error in updateCalendarEvent:', error);
         throw error;
+    }
+};
+
+export const listCalendarEvents = async (providerToken: string, timeMin: string, timeMax: string) => {
+    try {
+        const params = new URLSearchParams({
+            timeMin,
+            timeMax,
+            singleEvents: 'true',
+            orderBy: 'startTime',
+            maxResults: '2500' // Fetch a large batch
+        });
+
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`, {
+            headers: {
+                'Authorization': `Bearer ${providerToken}`,
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error('Calendar List Error:', data);
+            throw new Error(data.error?.message || 'Failed to list calendar events');
+        }
+
+        return data.items || [];
+    } catch (error) {
+        console.error('Error in listCalendarEvents:', error);
+        return [];
     }
 };

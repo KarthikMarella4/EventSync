@@ -29,22 +29,50 @@ export const insertGoogleTask = async (task: {
 
 export const deleteGoogleTask = async (taskId: string, providerToken: string) => {
     try {
-        await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, {
+        const response = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${providerToken}`,
             },
         });
+
+        if (!response.ok) {
+            if (response.status === 410 || response.status === 404) {
+                return true;
+            }
+            const data = await response.json();
+            throw new Error(data.error?.message || 'Failed to delete Google Task');
+        }
         return true;
     } catch (error) {
         console.error('Error deleting Google Task:', error);
-        return false;
+        throw error;
+    }
+};
+
+export const updateGoogleTask = async (taskId: string, updates: any, providerToken: string) => {
+    try {
+        const response = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${providerToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updates),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error?.message || 'Failed to update Google Task');
+        return data;
+    } catch (error) {
+        console.error('Error updating Google Task:', error);
+        throw error;
     }
 };
 
 export const listGoogleTasks = async (providerToken: string) => {
     try {
-        const response = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=true&showHidden=true', {
+        const response = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=true&showHidden=true&maxResults=100', {
             headers: {
                 'Authorization': `Bearer ${providerToken}`,
             },

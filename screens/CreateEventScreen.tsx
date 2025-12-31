@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { createCalendarEvent } from '../lib/googleCalendar';
+import { sendNotification } from '../lib/notifications';
 
 interface CreateEventScreenProps {
   onClose: () => void;
@@ -135,45 +136,68 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
           setTimeout(() => reject(new Error('Request timed out - check your internet connection')), 10000)
         );
 
-        const { data: newSupabaseEvent, error: insertError }: any = await Promise.race([insertPromise, timeoutPromise]);
+        // @ts-ignore
+        const { data: newSupabaseEvent, error: insertError } = await Promise.race([insertPromise, timeoutPromise]);
         if (insertError) throw insertError;
 
-        // Add to Google Calendar
+        // Add to Google Calendar - ROBUST SYNC
         try {
           const { data: { session } } = await supabase.auth.getSession();
           const providerToken = session?.provider_token;
 
           if (providerToken) {
-            const startDateTime = new Date(`${date}T${time}`);
-            const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
 
-            const googleEventId = await createCalendarEvent({
-              title,
-              description,
-              location,
-              startTime: startDateTime.toISOString(),
-              endTime: endDateTime.toISOString(),
-            }, providerToken);
+            // Wrap Google Sync in a timeout so UI doesn't freeze
+            const syncPromise = (async () => {
+              const startDateTime = new Date(`${date}T${time}`);
+              const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
 
-            if (googleEventId) {
-              await supabase.from('events').update({ google_calendar_event_id: googleEventId }).eq('id', newSupabaseEvent.id);
-            }
+              // Append Image to Description
+              let finalDesc = description;
+              if (imageUrl) {
+                finalDesc += `\n\nEvent Image: ${imageUrl}`;
+              }
+
+              const googleEventId = await createCalendarEvent({
+                title,
+                description: finalDesc,
+                location,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+              }, providerToken);
+
+              // Save Calendar ID immediately
+              if (googleEventId) {
+                await supabase.from('events').update({ google_calendar_event_id: googleEventId }).eq('id', newSupabaseEvent.id);
+              }
+              return googleEventId;
+            })();
+
+            const googleTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Google Sync Timeout')), 8000));
+
+            await Promise.race([syncPromise, googleTimeout]);
             alert('Event published and added to your Google Calendar!');
           } else {
             alert('Event published! (Calendar sync skipped: No Google permission)');
           }
         } catch (calendarError) {
-          console.error("Calendar Sync Error", calendarError);
-          alert('Event published, but failed to add to Google Calendar.');
+          console.error("Calendar Sync Error (Background)", calendarError);
+          // Don't block user flow
         }
       }
 
       if (Notification.permission === 'granted') {
-        new Notification('Event Published: ' + title, {
+        sendNotification('Event Published: ' + title, {
           body: `Happening on ${date} at ${time}`,
         });
       } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission();
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            sendNotification('Event Published: ' + title, {
+              body: `Happening on ${date} at ${time}`,
+            });
+          }
+        });
       }
 
       if (onEventCreated) onEventCreated(date);

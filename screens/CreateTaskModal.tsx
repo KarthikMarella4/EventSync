@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { insertGoogleTask } from '../lib/googleTasks';
 import { createCalendarEvent } from '../lib/googleCalendar';
+import { sendNotification } from '../lib/notifications';
 
 interface CreateTaskModalProps {
     onClose: () => void;
@@ -95,6 +96,11 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                             due: dueDate
                         }, providerToken);
 
+                        // Save Task ID immediately
+                        if (googleTaskId) {
+                            await supabase.from('tasks').update({ google_task_id: googleTaskId }).eq('id', taskData.id);
+                        }
+
                         let googleCalendarEventId = null;
                         try {
                             const startDateTime = new Date(`${date}T${time}`);
@@ -108,6 +114,12 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                                 endTime: endDateTime.toISOString(),
                             }, providerToken);
                             googleCalendarEventId = eventData.id;
+
+                            // Save Calendar ID immediately
+                            if (googleCalendarEventId) {
+                                await supabase.from('tasks').update({ google_calendar_event_id: googleCalendarEventId }).eq('id', taskData.id);
+                            }
+
                         } catch (e) { console.error('Cal sync error', e); }
 
                         return { googleTaskId, googleCalendarEventId };
@@ -117,17 +129,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                         setTimeout(() => reject(new Error('Google Sync Timed Out')), 8000)
                     );
 
-                    const result = await Promise.race([syncPromise, timeoutPromise]);
+                    await Promise.race([syncPromise, timeoutPromise]);
 
-                    if (result && (result.googleTaskId || result.googleCalendarEventId)) {
-                        // Update Supabase with IDs (fire and forget to speed up UI)
-                        supabase.from('tasks').update({
-                            google_task_id: result.googleTaskId,
-                            google_calendar_event_id: result.googleCalendarEventId
-                        }).eq('id', taskData.id).then(() => console.log('IDs updated'));
-
-                        alert('Task created & Synced!');
-                    }
+                    // If we get here, sync completed within time
+                    alert('Task created & Synced!');
                 } else {
                     // No token, just done
                 }
@@ -138,12 +143,19 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
             }
 
             if (Notification.permission === 'granted') {
-                new Notification('Task Created: ' + title, {
+                sendNotification('Task Created: ' + title, {
                     body: `Due: ${date} at ${time}`,
-                    icon: '/pwa-192x192.png' // fallback icon
+                    icon: '/pwa-192x192.png'
                 });
             } else if (Notification.permission !== 'denied') {
-                Notification.requestPermission();
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        sendNotification('Task Created: ' + title, {
+                            body: `Due: ${date} at ${time}`,
+                            icon: '/pwa-192x192.png'
+                        });
+                    }
+                });
             }
 
             if (onTaskCreated) onTaskCreated();

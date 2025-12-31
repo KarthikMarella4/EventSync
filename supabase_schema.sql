@@ -1,6 +1,6 @@
 -- 1. PROFILES TABLE
 create table if not exists profiles (
-  id uuid references auth.users not null primary key,
+  id uuid references auth.users on delete cascade not null primary key,
   updated_at timestamp with time zone,
   username text unique,
   full_name text,
@@ -33,7 +33,7 @@ create table if not exists events (
   time text,
   location text,
   image_url text,
-  creator_id uuid references auth.users not null
+  creator_id uuid references auth.users on delete cascade not null
 );
 
 -- Safely add the column if it doesn't exist (for existing tables)
@@ -48,7 +48,7 @@ alter table events enable row level security;
 
 -- Policies (Drop first to avoid errors)
 drop policy if exists "Events are viewable by everyone." on events;
-create policy "Events are viewable by everyone." on events for select using ( true );
+create policy "Users can view their own events." on events for select using ( auth.uid() = creator_id );
 
 drop policy if exists "Authenticated users can create events." on events;
 create policy "Authenticated users can create events." on events for insert with check ( auth.role() = 'authenticated' );
@@ -73,7 +73,7 @@ alter table event_photos enable row level security;
 
 -- Policies for event_photos
 drop policy if exists "Photos are viewable by everyone." on event_photos;
-create policy "Photos are viewable by everyone." on event_photos for select using ( true );
+create policy "Users can view their own photos." on event_photos for select using ( auth.uid() = user_id );
 
 drop policy if exists "Authenticated users can upload photos to events." on event_photos;
 create policy "Authenticated users can upload photos to events." on event_photos for insert with check ( auth.role() = 'authenticated' );
@@ -210,3 +210,64 @@ select id, raw_user_meta_data->>'full_name', raw_user_meta_data->>'avatar_url', 
 from auth.users
 where id not in (select id from public.profiles)
 on conflict do nothing;
+
+-- FORCE REPAIR CONSTRAINTS
+-- Run this script in the Supabase SQL Editor to fix the "Database error deleting user".
+-- This script drops existing constraints and re-adds them with ON DELETE CASCADE.
+
+-- 1. profiles -> auth.users
+ALTER TABLE profiles
+  DROP CONSTRAINT IF EXISTS profiles_id_fkey,
+  ADD CONSTRAINT profiles_id_fkey 
+  FOREIGN KEY (id) 
+  REFERENCES auth.users(id) 
+  ON DELETE CASCADE;
+
+-- 2. events -> auth.users (creator_id)
+ALTER TABLE events
+  DROP CONSTRAINT IF EXISTS events_creator_id_fkey,
+  ADD CONSTRAINT events_creator_id_fkey 
+  FOREIGN KEY (creator_id) 
+  REFERENCES auth.users(id) 
+  ON DELETE CASCADE;
+
+-- 3. tasks -> profiles (user_id)
+-- Note: existing constraint might be named differently, trying standard name
+ALTER TABLE tasks
+  DROP CONSTRAINT IF EXISTS tasks_user_id_fkey,
+  ADD CONSTRAINT tasks_user_id_fkey 
+  FOREIGN KEY (user_id) 
+  REFERENCES profiles(id) 
+  ON DELETE CASCADE;
+
+-- 4. event_photos -> events (event_id) AND profiles (user_id)
+ALTER TABLE event_photos
+  DROP CONSTRAINT IF EXISTS event_photos_event_id_fkey,
+  DROP CONSTRAINT IF EXISTS event_photos_user_id_fkey,
+  ADD CONSTRAINT event_photos_event_id_fkey 
+  FOREIGN KEY (event_id) 
+  REFERENCES events(id) 
+  ON DELETE CASCADE,
+  ADD CONSTRAINT event_photos_user_id_fkey 
+  FOREIGN KEY (user_id) 
+  REFERENCES profiles(id) 
+  ON DELETE CASCADE;
+
+-- 5. notifications -> profiles (user_id)
+ALTER TABLE notifications
+  DROP CONSTRAINT IF EXISTS notifications_user_id_fkey,
+  ADD CONSTRAINT notifications_user_id_fkey 
+  FOREIGN KEY (user_id) 
+  REFERENCES profiles(id) 
+  ON DELETE CASCADE;
+
+-- ENFORCE STRICT ISOLATION (RUN THIS TO UPDATE POLICIES)
+-- 1. Events
+DROP POLICY IF EXISTS "Events are viewable by everyone." ON events;
+DROP POLICY IF EXISTS "Users can view their own events." ON events;
+CREATE POLICY "Users can view their own events." ON events FOR SELECT USING ( auth.uid() = creator_id );
+
+-- 2. Photos
+DROP POLICY IF EXISTS "Photos are viewable by everyone." ON event_photos;
+DROP POLICY IF EXISTS "Users can view their own photos." ON event_photos;
+CREATE POLICY "Users can view their own photos." ON event_photos FOR SELECT USING ( auth.uid() = user_id );

@@ -9,10 +9,12 @@ import LoginScreen from './screens/LoginScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SmartPlusButton } from './components/SmartPlusButton';
 import { CreateTaskModal } from './screens/CreateTaskModal';
+import { GalleryUploadModal } from './screens/GalleryUploadModal';
 
 const AppContent: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false); // Placeholder
   const [targetDate, setTargetDate] = useState<string | null>(null);
   const [eventToEdit, setEventToEdit] = useState<any>(null);
@@ -90,7 +92,7 @@ const AppContent: React.FC = () => {
             <SmartPlusButton
               onCreateEvent={() => { setEventToEdit(null); setShowCreateModal(true); }}
               onCreateTask={() => setShowCreateTaskModal(true)}
-              onAddPhoto={() => setCurrentScreen('gallery')}
+              onAddPhoto={() => setShowUploadModal(true)}
             />
 
             <button
@@ -143,6 +145,16 @@ const AppContent: React.FC = () => {
             />
           </div>
         </div>
+      )}
+
+      {/* Gallery Upload Modal */}
+      {showUploadModal && (
+        <GalleryUploadModal
+          onClose={() => setShowUploadModal(false)}
+          onUploadComplete={() => {
+            setCurrentScreen('gallery'); // Navigate to gallery to see new upload
+          }}
+        />
       )}
     </div>
   );

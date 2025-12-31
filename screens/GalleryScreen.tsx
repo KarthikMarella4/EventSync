@@ -222,7 +222,7 @@ const GalleryScreen: React.FC = () => {
                         <img src={photo.url} className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" alt={photo.title} loading="lazy" />
 
                         {/* Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                           <div className="absolute top-2 right-2 flex gap-2">
                             {user?.id === photo.userId && (
                               <button onClick={(e) => { e.preventDefault(); handleDelete(photo); }} className="bg-red-500/80 hover:bg-red-600 backdrop-blur-md rounded-full p-1.5 flex items-center justify-center text-white transition-colors">

@@ -22,6 +22,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
     const [timeHour, setTimeHour] = useState('12');
     const [timeMinute, setTimeMinute] = useState('00');
     const [timeAmPm, setTimeAmPm] = useState('PM');
+    const [reminderOffset, setReminderOffset] = useState<number>(15); // Default 15m before
 
     // Sync to 24h format for DB
     React.useEffect(() => {
@@ -63,7 +64,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                 title,
                 description,
                 due_date: dueDate,
-                is_completed: false
+                is_completed: false,
+                reminder_time: reminderOffset >= 0 ? new Date(new Date(dueDate).getTime() - reminderOffset * 60000).toISOString() : null
             }).select().single();
 
             const dbTimeoutPromise = new Promise((_, reject) =>
@@ -106,12 +108,25 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                             const startDateTime = new Date(`${date}T${time}`);
                             const endDateTime = new Date(startDateTime.getTime() + 30 * 60 * 1000);
 
+                            // Calculate Reminders
+                            let reminders;
+                            if (reminderOffset >= 0) {
+                                reminders = {
+                                    useDefault: false,
+                                    overrides: [
+                                        { method: 'popup', minutes: reminderOffset }
+                                    ]
+                                };
+                            }
+
                             const eventData = await createCalendarEvent({
                                 title: `Task: ${title}`,
                                 description: description || '',
                                 location: '',
                                 startTime: startDateTime.toISOString(),
                                 endTime: endDateTime.toISOString(),
+                                // @ts-ignore
+                                reminders
                             }, providerToken);
                             googleCalendarEventId = eventData.id;
 
@@ -255,6 +270,23 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Remind Me */}
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-900 ml-1">Remind Me</label>
+                    <select
+                        value={reminderOffset}
+                        onChange={(e) => setReminderOffset(parseInt(e.target.value))}
+                        className="w-full h-12 px-4 bg-surface rounded-2xl border border-transparent focus:bg-white focus:border-black/10 outline-none font-medium transition-all appearance-none"
+                    >
+                        <option value={-1}>None</option>
+                        <option value={0}>At time of event</option>
+                        <option value={15}>15 minutes before</option>
+                        <option value={30}>30 minutes before</option>
+                        <option value={60}>1 hour before</option>
+                        <option value={1440}>1 day before</option>
+                    </select>
                 </div>
 
                 {/* Description */}

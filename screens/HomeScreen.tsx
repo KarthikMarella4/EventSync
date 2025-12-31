@@ -8,6 +8,7 @@ import { deleteGoogleTask, listGoogleTasks, updateGoogleTask } from '../lib/goog
 import { ReminderButton } from '../components/ReminderButton';
 import { TaskItem } from '../components/TaskItem';
 import { NotificationCenter } from '../components/NotificationCenter';
+import { TicketsListModal } from './TicketsListModal';
 
 interface HomeScreenProps {
   onNavigate: (screen: Screen) => void;
@@ -31,6 +32,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showTicketsModal, setShowTicketsModal] = useState(false);
 
   // Calendar Logic
   const today = new Date();
@@ -659,11 +661,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         ) : (
           <div className={`px-5 ${showAllFeatured ? 'grid grid-cols-1 gap-5' : 'flex overflow-x-auto hide-scrollbar gap-5 pb-4 snap-x snap-mandatory'}`}>
             {featuredEvents.map((event) => (
-              <div key={event.id} className={`snap-center shrink-0 ${showAllFeatured ? 'w-full' : 'w-[88%] max-w-[340px]'} relative aspect-[16/10] group cursor-pointer shadow-lg shadow-black/10 hover:shadow-xl transition-shadow`}>
+              <div key={event.id} className={`snap-center shrink-0 ${showAllFeatured ? 'w-full' : 'w-[88%] max-w-[340px]'} relative aspect-[16/10] group cursor-pointer shadow-lg shadow-black/10 hover:shadow-xl transition-all duration-300 active:scale-95`}>
                 {/* Content Wrapper (Clipped) */}
                 <div className="absolute inset-0 rounded-3xl overflow-hidden transform-gpu">
                   <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 group-active:scale-110"
                     style={{ backgroundImage: `url("${event.imageUrl}")` }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -721,7 +723,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                 </div>
                 <span className="text-xs font-medium text-text-muted group-hover:text-blue-600 transition-colors">Calendar</span>
               </button>
-              <button className="flex flex-col items-center gap-2.5 group">
+              <button
+                onClick={() => setShowTicketsModal(true)}
+                className="flex flex-col items-center gap-2.5 group"
+              >
                 <div className="size-16 rounded-2xl bg-white text-orange-500 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-orange-50 transition-colors">
                   <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
                 </div>
@@ -737,6 +742,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
           </section>
         )
       }
+
+      {showTicketsModal && <TicketsListModal onClose={() => setShowTicketsModal(false)} />}
+
 
       {/* Recommended */}
       {

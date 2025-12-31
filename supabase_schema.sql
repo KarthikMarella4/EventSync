@@ -1,3 +1,6 @@
+-- Run as postgres role to ensure permissions
+set role postgres;
+
 -- 1. PROFILES TABLE
 create table if not exists profiles (
   id uuid references auth.users on delete cascade not null primary key,
@@ -48,6 +51,7 @@ alter table events enable row level security;
 
 -- Policies (Drop first to avoid errors)
 drop policy if exists "Events are viewable by everyone." on events;
+drop policy if exists "Users can view their own events." on events;
 create policy "Users can view their own events." on events for select using ( auth.uid() = creator_id );
 
 drop policy if exists "Authenticated users can create events." on events;
@@ -270,4 +274,70 @@ CREATE POLICY "Users can view their own events." ON events FOR SELECT USING ( au
 -- 2. Photos
 DROP POLICY IF EXISTS "Photos are viewable by everyone." ON event_photos;
 DROP POLICY IF EXISTS "Users can view their own photos." ON event_photos;
-CREATE POLICY "Users can view their own photos." ON event_photos FOR SELECT USING ( auth.uid() = user_id );
+
+-- 8. TICKETS TABLE (Quick Actions)
+create table if not exists tickets (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade not null,
+  type text not null, -- Removed check constraint to allow custom types
+  title text not null,
+  file_url text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table tickets enable row level security;
+
+-- Policies for Tickets
+drop policy if exists "Users can view their own tickets." on tickets;
+create policy "Users can view their own tickets." on tickets for select using ( auth.uid() = user_id );
+
+drop policy if exists "Users can insert their own tickets." on tickets;
+create policy "Users can insert their own tickets." on tickets for insert with check ( auth.uid() = user_id );
+
+drop policy if exists "Users can delete their own tickets." on tickets;
+create policy "Users can delete their own tickets." on tickets for delete using ( auth.uid() = user_id );
+
+-- 9. TICKETS STORAGE BUCKET
+insert into storage.buckets (id, name, public) values ('tickets', 'tickets', true) on conflict (id) do update set public = true;
+
+-- Policies for tickets storage (Defensive: Catches permission errors and warns instead of failing)
+do $$
+begin
+  -- 1. Upload Policy
+  begin
+    create policy "Authenticated users can upload tickets." on storage.objects for insert with check ( bucket_id = 'tickets' and auth.role() = 'authenticated' );
+  exception
+    when duplicate_object then null;
+    when insufficient_privilege then raise warning 'Permission denied creating upload policy. Please create manually in Dashboard > Storage.';
+  end;
+
+  -- 2. Delete Policy
+  begin
+    create policy "Users can delete their own tickets." on storage.objects for delete using ( bucket_id = 'tickets' and auth.uid() = owner );
+  exception
+    when duplicate_object then null;
+    when insufficient_privilege then raise warning 'Permission denied creating delete policy.';
+  end;
+  
+  -- 3. View Policy
+  begin
+    create policy "Ticket files are viewable by owner." on storage.objects for select using ( bucket_id = 'tickets' and auth.uid() = owner );
+  exception
+    when duplicate_object then null;
+    when insufficient_privilege then raise warning 'Permission denied creating view policy.';
+  end;
+end $$;
+
+-- 10. MIGRATIONS
+-- Remove type constraint if it exists (for users who ran previous version)
+do $$
+begin
+  if exists (select 1 from information_schema.table_constraints where constraint_name = 'tickets_type_check') then
+    alter table tickets drop constraint tickets_type_check;
+  end if;
+end $$;
+
+-- 11. FIX GALLERY VISIBILITY
+-- Ensure event photos are visible to everyone (or at least authenticated users)
+drop policy if exists "Photos are viewable by everyone." on event_photos;
+create policy "Photos are viewable by everyone." on event_photos for select using ( true );

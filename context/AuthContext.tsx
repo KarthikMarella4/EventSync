@@ -19,6 +19,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const userRef = React.useRef<User | null>(null);
+
+    useEffect(() => {
+        userRef.current = user;
+    }, [user]);
 
     useEffect(() => {
         let mounted = true;
@@ -114,10 +119,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.warn('Profile fetch failed/timed out, using metadata defaults:', e.message || e);
         }
 
-        // Fallback to metadata or defaults if no profile row yet
-        const name = data?.full_name || sbUser.user_metadata?.full_name || sbUser.email?.split('@')[0] || 'User';
-        const avatar = data?.avatar_url || sbUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
-        const occupation = data?.occupation || 'Member';
+        // Use cache (userRef) if data fetch failed but we have existing data for same user
+        const existingUser = userRef.current;
+        const shouldUseCache = existingUser && existingUser.id === sbUser.id;
+
+        // Fallback hierarchy: 1. DB Data, 2. Cache (to prevent flicker/loss), 3. Auth Metadata, 4. Defaults
+        const name = data?.full_name || (shouldUseCache ? existingUser.name : null) || sbUser.user_metadata?.full_name || sbUser.email?.split('@')[0] || 'User';
+        const avatar = data?.avatar_url || (shouldUseCache ? existingUser.avatar : null) || sbUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+        const occupation = data?.occupation || (shouldUseCache ? existingUser.occupation : null) || 'Member';
 
         return {
             id: sbUser.id,

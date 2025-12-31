@@ -147,7 +147,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
 
   const fetchEvents = async () => {
-    const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('creator_id', user?.id)
+      .order('created_at', { ascending: false });
     if (data) {
       const mappedEvents: Event[] = data.map((e: any) => ({
         id: e.id,
@@ -182,7 +186,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
       // Find tasks in Supabase that are NOT completed, but ARE completed in Google
       // This is a simple one-way sync from Google -> App on load
-      const { data: localTasks } = await supabase.from('tasks').select('*').eq('is_completed', false);
+      const { data: localTasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('is_completed', false);
 
       if (localTasks && googleTasks.length > 0) {
         for (const localTask of localTasks) {

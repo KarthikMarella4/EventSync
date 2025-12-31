@@ -21,52 +21,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Check active session
-        // Safety timeout in case Supabase hangs
-        const timeoutId = setTimeout(() => {
-            setIsLoading(false);
-        }, 5000);
+        let mounted = true;
 
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                mapSupabaseUserToDomainUser(session.user)
-                    .then(setUser)
-                    .catch(err => {
-                        console.error('User mapping failed', err);
-                        setUser({ id: session.user.id, name: 'User', email: session.user.email || '', isAuthenticated: true });
-                    })
-                    .finally(() => setIsLoading(false));
-            } else {
-                setUser(null);
-                setIsLoading(false);
-            }
-        }).catch((err) => {
-            console.error('Session check failed', err);
-            setUser(null);
-            setIsLoading(false);
-        }).finally(() => {
-            clearTimeout(timeoutId);
-        });
-
-        // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        async function initSession() {
             try {
-                if (session?.user) {
-                    const domainUser = await mapSupabaseUserToDomainUser(session.user);
-                    setUser(domainUser);
-                } else {
-                    setUser(null);
+                // 1. Get initial session
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                if (error) throw error;
+
+                if (mounted) {
+                    if (session?.user) {
+                        const domainUser = await mapSupabaseUserToDomainUser(session.user);
+                        if (mounted) setUser(domainUser);
+                    } else {
+                        if (mounted) setUser(null);
+                    }
                 }
-            } catch (error) {
-                console.error('Auth state change error:', error);
-                if (session?.user) setUser({ id: session.user.id, name: 'User', email: session.user.email || '', isAuthenticated: true });
-                else setUser(null);
+            } catch (err) {
+                console.error('Session initialization failed:', err);
+                if (mounted) setUser(null);
             } finally {
-                setIsLoading(false);
+                if (mounted) setIsLoading(false);
+            }
+        }
+
+        initSession();
+
+        // 2. Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                if (session?.user) {
+                    // Only map and update if we don't have a user or if ID changed/forced refresh
+                    // But usually safer to just update
+                    const domainUser = await mapSupabaseUserToDomainUser(session.user);
+                    if (mounted) {
+                        setUser(domainUser);
+                        setIsLoading(false);
+                    }
+                }
+            } else if (event === 'SIGNED_OUT') {
+                if (mounted) {
+                    setUser(null);
+                    setIsLoading(false);
+                }
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const mapSupabaseUserToDomainUser = async (sbUser: SupabaseUser): Promise<User> => {

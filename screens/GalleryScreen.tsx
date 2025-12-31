@@ -8,7 +8,7 @@ const GalleryScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
+  const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState('Recent');
 
   useEffect(() => {
@@ -35,13 +35,13 @@ const GalleryScreen: React.FC = () => {
       const { data, error } = await supabase
         .from('event_photos')
         .select(`
-          id,
-          photo_url,
-          created_at,
-          user_id,
-          events (title),
-          profiles:user_id (full_name, avatar_url, username)
-        `)
+            id,
+            photo_url,
+            created_at,
+            user_id,
+            events (title),
+            profiles:user_id (full_name, avatar_url, username)
+            `)
         .order('created_at', { ascending: false });
 
       console.log('Gallery: Fetched Data:', data);
@@ -103,7 +103,6 @@ const GalleryScreen: React.FC = () => {
   };
 
   // Filter Logic
-  // Filter Logic
   const filteredPhotos = photos.filter(p => {
     // 1. Tab Filter
     if (activeTab === 'My Uploads') {
@@ -118,6 +117,58 @@ const GalleryScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-white pb-28 min-h-screen">
+      {/* Full Screen Image Viewer Modal */}
+      {selectedPhoto && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-200">
+          {/* Header / Controls */}
+          <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/60 to-transparent">
+            <button
+              onClick={() => setSelectedPhoto(null)}
+              className="flex items-center justify-center size-10 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10 hover:bg-white/20 transition-all"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+
+            {user?.id === selectedPhoto.userId && (
+              <button
+                onClick={() => {
+                  handleDelete(selectedPhoto);
+                  setSelectedPhoto(null);
+                }}
+                className="flex items-center justify-center size-10 rounded-full bg-red-500/80 backdrop-blur-md text-white hover:bg-red-600 transition-all"
+              >
+                <span className="material-symbols-outlined">delete</span>
+              </button>
+            )}
+          </div>
+
+          {/* Main Image */}
+          <div className="flex-1 flex items-center justify-center p-2 relative">
+            <img
+              src={selectedPhoto.url}
+              alt={selectedPhoto.title}
+              className="max-w-full max-h-[90vh] object-contain shadow-2xl"
+            />
+          </div>
+
+          {/* Footer Info */}
+          <div className="p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white pb-10">
+            <h2 className="text-xl font-bold mb-1">{selectedPhoto.title}</h2>
+            <div className="flex items-center gap-3 mt-2">
+              {selectedPhoto.user.avatar ? (
+                <img src={selectedPhoto.user.avatar} className="size-8 rounded-full border border-white/40 object-cover" alt="Avatar" />
+              ) : (
+                <div className={`size-8 rounded-full border border-white/40 flex items-center justify-center text-xs text-white font-bold ${selectedPhoto.user.color || 'bg-black'}`}>{selectedPhoto.user.initials}</div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{selectedPhoto.user.handle}</span>
+                <span className="text-xs text-white/60">Uploaded {new Date(selectedPhoto.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
         {/* Header */}
         <header className="sticky top-0 z-30 flex flex-col gap-2 p-4 bg-white/95 backdrop-blur-md border-b border-slate-100 transition-all">
@@ -218,14 +269,14 @@ const GalleryScreen: React.FC = () => {
                   <h3 className="text-xl font-bold text-black mb-3 ml-1 sticky top-[160px] z-10 bg-white/50 backdrop-blur-sm py-1 max-w-fit px-3 rounded-xl">{groupTitle}</h3>
                   <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
                     {groupPhotos.map(photo => (
-                      <div key={photo.id} className="break-inside-avoid relative group overflow-hidden rounded-2xl bg-slate-100 shadow-sm hover:shadow-md transition-all">
+                      <div key={photo.id} onClick={() => setSelectedPhoto(photo)} className="break-inside-avoid relative group overflow-hidden rounded-2xl bg-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer">
                         <img src={photo.url} className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" alt={photo.title} loading="lazy" />
 
                         {/* Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                           <div className="absolute top-2 right-2 flex gap-2">
                             {user?.id === photo.userId && (
-                              <button onClick={(e) => { e.preventDefault(); handleDelete(photo); }} className="bg-red-500/80 hover:bg-red-600 backdrop-blur-md rounded-full p-1.5 flex items-center justify-center text-white transition-colors">
+                              <button onClick={(e) => { e.stopPropagation(); handleDelete(photo); }} className="bg-red-500/80 hover:bg-red-600 backdrop-blur-md rounded-full p-1.5 flex items-center justify-center text-white transition-colors">
                                 <span className="material-symbols-outlined text-[16px]">delete</span>
                               </button>
                             )}

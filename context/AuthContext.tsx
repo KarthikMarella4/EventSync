@@ -23,18 +23,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         let mounted = true;
 
+        // Safety timeout to prevent infinite loading (Increased to 8s)
+        const timeoutId = setTimeout(() => {
+            if (mounted) {
+                console.warn('Auth session check timed out, forcing app load.');
+                setIsLoading(false);
+            }
+        }, 8000);
+
         async function initSession() {
             try {
+                console.log('AuthContext: Initializing session...');
                 // 1. Get initial session
                 const { data: { session }, error } = await supabase.auth.getSession();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('AuthContext: Error getting session', error);
+                    throw error;
+                }
 
                 if (mounted) {
                     if (session?.user) {
+                        console.log('AuthContext: Found existing session for', session.user.email);
                         const domainUser = await mapSupabaseUserToDomainUser(session.user);
                         if (mounted) setUser(domainUser);
                     } else {
+                        console.log('AuthContext: No session found.');
                         if (mounted) setUser(null);
                     }
                 }
@@ -50,10 +64,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // 2. Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            console.log(`AuthContext: Auth State Change: ${event}`, session?.user?.email);
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
                 if (session?.user) {
-                    // Only map and update if we don't have a user or if ID changed/forced refresh
-                    // But usually safer to just update
                     const domainUser = await mapSupabaseUserToDomainUser(session.user);
                     if (mounted) {
                         setUser(domainUser);
@@ -70,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         return () => {
             mounted = false;
+            clearTimeout(timeoutId);
             subscription.unsubscribe();
         };
     }, []);
@@ -78,16 +93,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Try to fetch profile from 'profiles' table with a timeout
         let data: any = null;
         try {
-            const { data: profileData, error } = await supabase
+            // Create a promise for the DB fetch
+            const fetchPromise = supabase
                 .from('profiles')
                 .select('full_name, avatar_url, occupation')
                 .eq('id', sbUser.id)
                 .single();
 
+            // Create a timeout promise (2 seconds)
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Profile fetch timeout')), 2000)
+            );
+
+            // Race them
+            const { data: profileData, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
             if (error) throw error;
             data = profileData;
-        } catch (e) {
-            console.warn('Profile fetch failed, using metadata defaults', e);
+        } catch (e: any) {
+            console.warn('Profile fetch failed/timed out, using metadata defaults:', e.message || e);
         }
 
         // Fallback to metadata or defaults if no profile row yet

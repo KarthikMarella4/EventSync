@@ -11,6 +11,7 @@ const ProfileScreen: React.FC = () => {
   const [editName, setEditName] = useState(user?.name || '');
   const [editOccupation, setEditOccupation] = useState(user?.occupation || 'Member');
   const [loading, setLoading] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'Recent' | 'Hosted' | 'Upcoming' | 'Past'>('Recent');
   const [eventList, setEventList] = useState<any[]>([]);
   const [listLoading, setListLoading] = useState(false);
@@ -32,7 +33,53 @@ const ProfileScreen: React.FC = () => {
     }
   }, [user]);
 
-  // ... (rest of simple functions)
+  const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('You must select an image to upload.');
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+      // Update profile in DB
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: (await supabase.auth.getUser()).data.user?.id,
+          avatar_url: data.publicUrl
+        });
+
+      if (updateError) throw updateError;
+
+      // Update Auth Metadata (Backup for session)
+      await supabase.auth.updateUser({
+        data: { avatar_url: data.publicUrl }
+      });
+
+      // Refresh profile to update UI instantly
+      await refreshProfile();
+      alert('Avatar updated successfully!');
+
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const fetchEvents = async (tab: string) => {
     try {
@@ -71,8 +118,6 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  // ... (fetchStats stays similar but doesn't setRecentEvents anymore, handled by fetchEvents)
-
   const fetchStats = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -91,11 +136,184 @@ const ProfileScreen: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  // ... (saveProfile, deleteAvatar same)
+  const saveProfile = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: editName,
+          occupation: editOccupation,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+
+      // Update Auth Metadata
+      await supabase.auth.updateUser({
+        data: { full_name: editName }
+      });
+
+      alert('Profile updated successfully!');
+      setIsEditing(false);
+      await refreshProfile();
+    } catch (error: any) {
+      alert(`Error updating profile: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteAvatar = async () => {
+    try {
+      if (!confirm('Are you sure you want to remove your profile picture?')) return;
+
+      setUploading(true);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="bg-surface pb-28 min-h-screen">
-      {/* ... (Header & Profile Info Same) ... */}
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/50">
+        <div className="flex items-center justify-between p-4 h-14">
+          <button className="flex size-10 items-center justify-center rounded-full hover:bg-black/5">
+            <span className="material-symbols-outlined text-black font-semibold">arrow_back</span>
+          </button>
+          <h2 className="text-base font-bold tracking-tight uppercase text-black">Profile</h2>
+          {isEditing ? (
+            <button
+              onClick={() => setIsEditing(false)}
+              className="text-sm font-bold text-red-500 hover:bg-red-50 px-3 py-1 rounded-full transition-colors"
+            >
+              Cancel
+            </button>
+          ) : (
+            <button className="flex size-10 items-center justify-center rounded-full hover:bg-black/5">
+              <span className="material-symbols-outlined text-black font-semibold">more_horiz</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Profile Info */}
+      <div className="flex flex-col items-center pt-8 pb-10 px-6 bg-white">
+        <div className="relative mb-8 group">
+          <div className="h-32 w-32 rounded-full p-1 bg-white shadow-lg ring-1 ring-black/5 overflow-hidden mx-auto">
+            {user?.avatar ? (
+              <div className="w-full h-full rounded-full bg-cover bg-center" style={{ backgroundImage: `url("${user.avatar}")` }} />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="material-symbols-outlined text-4xl text-gray-400">person</span>
+              </div>
+            )}
+          </div>
+
+          {isEditing && (
+            <div className="flex gap-4 justify-center mt-6">
+              <label className="flex flex-col items-center gap-1 cursor-pointer group/btn">
+                <div className="size-12 rounded-full bg-black text-white flex items-center justify-center shadow-md group-hover/btn:bg-gray-800 transition-colors">
+                  {uploading ? (
+                    <span className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  ) : (
+                    <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold text-black uppercase tracking-wide">Change</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={uploadAvatar}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+
+              {user?.avatar && (
+                <button
+                  onClick={deleteAvatar}
+                  className="flex flex-col items-center gap-1 group/btn"
+                >
+                  <div className="size-12 rounded-full bg-white border border-gray-200 text-red-500 flex items-center justify-center shadow-sm group-hover/btn:bg-red-50 group-hover/btn:border-red-100 transition-colors">
+                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide">Remove</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col items-center w-full max-w-sm px-4">
+          {isEditing ? (
+            <div className="w-full space-y-5 animate-in fade-in zoom-in-95 duration-300">
+              <div className='w-full'>
+                <label className="block text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-2 ml-1">Full Name</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-black/10 focus:ring-4 focus:ring-black/5 rounded-2xl font-bold text-lg text-black outline-none transition-all placeholder:text-gray-300"
+                  placeholder="Your Name"
+                />
+              </div>
+              <div className='w-full'>
+                <label className="block text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-2 ml-1">Occupation</label>
+                <input
+                  value={editOccupation}
+                  onChange={(e) => setEditOccupation(e.target.value)}
+                  className="w-full px-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-black/10 focus:ring-4 focus:ring-black/5 rounded-2xl font-semibold text-base text-gray-700 outline-none transition-all placeholder:text-gray-300"
+                  placeholder="What do you do?"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-center space-y-1">
+              <h1 className="text-2xl font-black tracking-tight text-black">{user?.name}</h1>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-50 border border-gray-100">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{user?.occupation || 'Member'}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {isEditing ? (
+          <button
+            onClick={saveProfile}
+            disabled={loading}
+            className="mt-8 w-full max-w-xs bg-black text-white font-bold py-3.5 px-6 rounded-full shadow-xl flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-70"
+          >
+            {loading ? (
+              <span className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[20px]">save</span>
+                <span>Save Changes</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="mt-8 w-full max-w-xs bg-black text-white font-bold py-3.5 px-6 rounded-full shadow-xl flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[20px]">edit_square</span>
+            <span>Edit Profile</span>
+          </button>
+        )}
+      </div>
 
       {/* Stats (Tabs) */}
       <div className="px-5 mt-[-1rem] relative z-10 mb-8">
@@ -118,7 +336,7 @@ const ProfileScreen: React.FC = () => {
       </div>
 
       {/* Activity / List Section */}
-      <div className="mb-10 min-h-[300px]">
+      <div className="mb-2 min-h-0">
         <div className="flex items-center justify-between px-6 mb-4">
           <h3 className="text-lg font-bold tracking-tight text-black flex items-center gap-2">
             {activeTab === 'Recent' ? 'Recent Activity' : `${activeTab} Events`}
@@ -188,8 +406,6 @@ const ProfileScreen: React.FC = () => {
             ))}
           </div>
         </div>
-
-
 
         <button
           onClick={logout}

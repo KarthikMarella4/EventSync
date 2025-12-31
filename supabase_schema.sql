@@ -205,8 +205,7 @@ exception when others then
   null; 
 end $$;
 
--- Trigger removed to avoid permission errors (42501). 
--- If you need automatic profile creation, please set it up in the Supabase Dashboard > Authentication > Triggers.
+
 
 -- Fix for existing users with missing profiles:
 insert into public.profiles (id, full_name, avatar_url, username)

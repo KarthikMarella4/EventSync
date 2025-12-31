@@ -201,31 +201,33 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                                 <select
                                     value={timeHour}
                                     onChange={(e) => setTimeHour(e.target.value)}
-                                    className="w-full h-12 pl-3 pr-8 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold outline-none appearance-none transition-all"
+                                    className="w-full h-12 px-2 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold outline-none appearance-none transition-all text-center"
                                 >
                                     {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
                                         <option key={h} value={h.toString()}>{h}</option>
                                     ))}
                                 </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <span className="material-symbols-outlined text-sm text-text-muted">expand_more</span>
-                                </div>
                             </div>
 
                             {/* Minute */}
                             <div className="relative flex-1">
-                                <select
+                                <input
+                                    type="number"
                                     value={timeMinute}
-                                    onChange={(e) => setTimeMinute(e.target.value)}
-                                    className="w-full h-12 pl-3 pr-8 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold outline-none appearance-none transition-all"
-                                >
-                                    {['00', '15', '30', '45'].map(m => (
-                                        <option key={m} value={m}>{m}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <span className="material-symbols-outlined text-sm text-text-muted">expand_more</span>
-                                </div>
+                                    onChange={(e) => {
+                                        let val = parseInt(e.target.value);
+                                        if (isNaN(val)) setTimeMinute('');
+                                        else if (val > 59) setTimeMinute('59');
+                                        else if (val < 0) setTimeMinute('00');
+                                        else setTimeMinute(val.toString());
+                                    }}
+                                    onBlur={() => {
+                                        if (timeMinute === '' || isNaN(parseInt(timeMinute))) setTimeMinute('00');
+                                        else setTimeMinute(parseInt(timeMinute).toString().padStart(2, '0'));
+                                    }}
+                                    placeholder="00"
+                                    className="w-full h-12 px-2 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold outline-none transition-all text-center"
+                                />
                             </div>
 
                             {/* AM/PM */}
@@ -233,14 +235,11 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onTas
                                 <select
                                     value={timeAmPm}
                                     onChange={(e) => setTimeAmPm(e.target.value)}
-                                    className="w-full h-12 pl-3 pr-8 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold outline-none appearance-none transition-all"
+                                    className="w-full h-12 px-2 bg-surface border border-transparent focus:bg-white focus:border-black/10 rounded-2xl text-base font-semibold outline-none appearance-none transition-all text-center"
                                 >
                                     <option value="AM">AM</option>
                                     <option value="PM">PM</option>
                                 </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <span className="material-symbols-outlined text-sm text-text-muted">expand_more</span>
-                                </div>
                             </div>
                         </div>
                     </div>

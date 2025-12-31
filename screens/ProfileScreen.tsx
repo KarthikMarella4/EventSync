@@ -210,7 +210,7 @@ const ProfileScreen: React.FC = () => {
       </div>
 
       {/* Profile Info */}
-      <div className="flex flex-col items-center pt-8 pb-10 px-6 bg-white">
+      <div className="flex flex-col items-center pt-8 pb-6 px-6 bg-white">
         <div className="relative mb-8 group">
           <div className="h-32 w-32 rounded-full p-1 bg-white shadow-lg ring-1 ring-black/5 overflow-hidden mx-auto">
             {user?.avatar ? (
@@ -316,7 +316,7 @@ const ProfileScreen: React.FC = () => {
       </div>
 
       {/* Stats (Tabs) */}
-      <div className="px-5 mt-[-1rem] relative z-10 mb-8">
+      <div className="px-5 mt-[-1rem] relative z-10 mb-4">
         <div className="flex gap-4 justify-between">
           {[
             { label: 'Hosted', val: stats.hosted, id: 'Hosted' },
@@ -389,7 +389,7 @@ const ProfileScreen: React.FC = () => {
       </div>
 
       {/* Settings Sections */}
-      <div className="px-5 space-y-8">
+      <div className="px-5 space-y-4">
         <div>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-4 mb-3">Preferences</h3>
           <div className="bg-white rounded-3xl overflow-hidden shadow-soft border border-gray-100">
@@ -409,7 +409,7 @@ const ProfileScreen: React.FC = () => {
 
         <button
           onClick={logout}
-          className="w-full bg-white text-black text-[15px] font-bold p-4 rounded-3xl border-2 border-black hover:bg-black hover:text-white transition-all duration-300 flex items-center justify-center gap-2 group shadow-sm mb-12 active:scale-95"
+          className="w-full bg-white text-black text-[15px] font-bold p-4 rounded-3xl border-2 border-black hover:bg-black hover:text-white transition-all duration-300 flex items-center justify-center gap-2 group shadow-sm mb-6 active:scale-95"
         >
           <span className="material-symbols-outlined group-hover:text-white">logout</span>
           Log Out

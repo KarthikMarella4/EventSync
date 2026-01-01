@@ -82,6 +82,10 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
   };
 
   const publishEvent = async () => {
+    if (!user) {
+      return alert('You must be logged in to create an event.');
+    }
+
     if (!title || !description || !date || !time || !location) {
       return alert('Please fill in all fields (Title, Date, Time, Location, Description)');
     }
@@ -114,7 +118,7 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
         time,
         location,
         image_url: imageUrl,
-        creator_id: user?.id
+        creator_id: user.id
       };
 
       if (initialEvent) {
@@ -204,7 +208,12 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ onClose, onEventC
       onClose();
 
     } catch (error: any) {
-      alert(`Error saving event: ${error.message}`);
+      console.error('Error publishing event:', error);
+      if (error.message === 'Failed to fetch') {
+        alert('Connection failed. Please check your internet connection and verify that your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are correct in your .env file.');
+      } else {
+        alert(`Error saving event: ${error.message}`);
+      }
     } finally {
       setIsPublishing(false);
     }

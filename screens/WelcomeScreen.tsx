@@ -7,67 +7,64 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin, onGoToSignUp }) => {
     return (
-        <div className="bg-white font-display text-text-main min-h-screen flex flex-col antialiased selection:bg-black selection:text-white relative overflow-hidden">
-            {/* Hero Image Section */}
-            <div className="relative w-full h-[55vh] shrink-0 overflow-hidden">
+        <div className="relative flex min-h-screen w-full flex-col md:flex-row overflow-x-hidden font-display bg-white">
+            {/* Hero Image Section - Top on mobile, Right side on desktop */}
+            <div className="relative w-full h-[45vh] md:h-screen md:w-1/2 md:order-2 shrink-0 overflow-hidden">
                 <div
-                    className="absolute inset-0 bg-cover bg-center scale-105"
-                    style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDWOaLuihEGqj0sxMHsKjtjVNkTkfpLJc_6pX6XnE9mjUAkWAup8_4DtSSvTcw9akEhcHHIHrlX0FJxL1MCSc40117OFkFvDDyaRrQqgTsjJapsbNlGkqP6ythDRjPZeEPiSH93L7dN2FjSnRpN-j16eC4RrJXt7SdiU7qI6IT_Fh70tpH2aRPutCUpoWHQYkosoLnuFnlqgxbSx-B4tYuI3FQn9msGmBvlh0PsPhbi0svVGweJXn3AiAn0pTHIJeQGlFQ7S_87UXa1')" }}
+                    className="w-full h-full bg-cover bg-center transition-transform duration-[10000ms] hover:scale-105"
+                    style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCRPb9BsmNWrpf0AeC35bkocu8QT1G0QOV13MM4kllxx64bQg1UG_H29k0UTxYcsawoylgPNjo9SNvQKUaemrT9uLNEkBDVivGVWUfwIhWapZEs9LakY0X48BAEibAO6-cs5tSnlv1ORLVapgqFR7XsX3t4kCEA7Q2E8H6OWxEwzoTxqK4XNJ4DMdtZxAX7mvmgpT-SYRKlFDAM-EOxoOhn1nEqxkqnHDFpJkvdTm7ic7wwLSSGAUMtKoRocmw9R82ymxraJJWFWw4')" }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent"></div>
-
-                {/* Floating Card */}
-                <div className="absolute top-[20%] right-6 bg-white/80 backdrop-blur-md p-3 pr-5 rounded-2xl shadow-float border border-white/60 flex items-center gap-3 transform rotate-[-2deg] opacity-90">
-                    <div className="bg-black/5 p-2 rounded-full">
-                        <span className="material-symbols-outlined text-[20px] text-black">confirmation_number</span>
-                    </div>
-                    <div>
-                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Upcoming</p>
-                        <p className="text-xs font-bold text-text-main">Tech Summit 2026</p>
-                    </div>
-                </div>
+                {/* Mobile Gradient (Bottom) */}
+                <div className="absolute bottom-0 left-0 w-full h-32 md:hidden bg-gradient-to-t from-white to-transparent"></div>
+                {/* Desktop Gradient (Left side of the image to blend into the content) */}
+                <div className="hidden md:block absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white to-transparent"></div>
             </div>
-
-            {/* Content Section */}
-            <div className="flex-1 flex flex-col justify-end px-8 pb-12 pt-4 z-10 relative -mt-20">
-                <div className="mb-auto">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm mb-8">
-                        <span className="material-symbols-outlined text-[20px] text-black">event_note</span>
-                        <span className="text-xs font-extrabold uppercase tracking-wide text-black">EventSync</span>
+            {/* Content Section - Bottom on mobile, Left side on desktop */}
+            <div className="relative z-10 flex-1 flex flex-col items-start justify-center py-10 md:py-20 px-6 md:px-16 lg:px-24 bg-white w-full md:order-1">
+                <div className="flex flex-col items-start w-full max-w-lg">
+                    {/* Brand Identity */}
+                    <div className="mb-6 md:mb-10 flex items-center justify-start gap-3">
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                            <span className="material-symbols-outlined text-[24px] md:text-[28px]">event</span>
+                        </div>
+                        <span className="text-2xl md:text-3xl font-bold tracking-tight text-text-main">EventSync</span>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-black leading-[1.15] mb-4 tracking-tight">
-                        Events that <br />
-                        match your <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-black to-gray-500">lifestyle.</span>
+                    {/* Headline */}
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-text-main mb-6 md:mb-8 leading-[1.1] text-left">
+                        Events that match <br />
+                        <span className="text-primary">your lifestyle.</span>
                     </h1>
-                    <p className="text-text-muted text-[15px] font-medium leading-relaxed max-w-xs text-opacity-90">
-                        Discover the best concerts, workshops, and meetups in your area. Sync your calendar and never miss out.
+                    {/* Subtext */}
+                    <p className="text-lg md:text-xl font-medium text-gray-500 max-w-md leading-relaxed mb-10 md:mb-12 text-left">
+                        Plan your events, never miss a reminder, store your tickets, and stay on top of daily tasks.
                     </p>
-                </div>
-
-                <div className="flex flex-col gap-4 mt-8">
-                    <button
-                        onClick={onGoToSignUp}
-                        className="w-full bg-black text-white font-bold text-[16px] py-4.5 rounded-2xl shadow-xl shadow-black/20 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
-                        Sign Up
-                        <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </button>
-                    <button
-                        onClick={onGoToLogin}
-                        className="w-full bg-white text-black font-bold text-[16px] py-4.5 rounded-2xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] transition-all shadow-sm"
-                    >
-                        Log In
-                    </button>
-                </div>
-
-                <div className="mt-8 text-center">
-                    <p className="text-[11px] text-gray-400 font-medium">
-                        By continuing, you agree to our
-                        <a className="text-black underline decoration-gray-300 hover:decoration-black transition-all mx-1" href="#">Terms of Service</a>
-                        &
-                        <a className="text-black underline decoration-gray-300 hover:decoration-black transition-all mx-1" href="#">Privacy Policy</a>.
-                    </p>
+                    {/* Actions */}
+                    <div className="flex flex-col gap-4 w-full max-w-md">
+                        <button
+                            onClick={onGoToSignUp}
+                            className="group w-full h-20 bg-[#130d1b] text-white rounded-3xl flex items-center justify-between px-8 text-xl font-bold shadow-2xl shadow-black/10 hover:shadow-primary/20 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
+                        >
+                            <span>Sign Up</span>
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                <span className="material-symbols-outlined text-[22px]">arrow_forward</span>
+                            </div>
+                        </button>
+                        <button
+                            onClick={onGoToLogin}
+                            className="w-full h-20 bg-transparent border-2 border-gray-200 text-[#130d1b] rounded-3xl flex items-center justify-center text-xl font-bold hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] transition-all duration-200"
+                        >
+                            Log In
+                        </button>
+                    </div>
+                    {/* Footer Links */}
+                    <div className="mt-12 md:mt-16">
+                        <p className="text-sm text-gray-400 font-medium">
+                            By joining, you agree to our
+                            <a href="#" className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Terms</a>
+                            and
+                            <a href="#" className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Privacy</a>.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

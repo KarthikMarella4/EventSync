@@ -1,8 +1,0 @@
-{
-  "name": "EventSync",
-  "description": "A comprehensive event management and social sharing platform to discover, create, and share event memories.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ]
-}

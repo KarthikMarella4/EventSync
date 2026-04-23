@@ -1,6 +1,9 @@
-# Welcome to our EventSync project
+### Welcome to our EventSync project
 
-Here’s a **description** for **EventSync** that incorporates all the details you provided, including its purpose, features, development tools, and deployment:
+<img width="2752" height="1536" alt="EventSync" src="https://github.com/user-attachments/assets/b173325a-f868-4a02-945d-17a9760af541" />
+
+
+#### Here’s a **description** for **EventSync** that incorporates all the details you provided, including its purpose, features, development tools, and deployment:
 
 ---
 
@@ -35,15 +38,3 @@ EventSync is deployed on **Netlify**, a leading platform for modern web applicat
 
 ### **Why EventSync?**
 EventSync is more than just an event management tool—it’s a platform designed to bring people together. Whether it’s a birthday party, family reunion, or casual get-together, EventSync ensures that planning and sharing memories are as enjoyable as the events themselves.
-
----
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-This description highlights the app’s purpose, features, and technical details while maintaining a user-friendly tone. Let me know if you’d like to tweak it further! 🚀

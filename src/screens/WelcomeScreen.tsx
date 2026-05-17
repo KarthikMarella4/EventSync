@@ -60,9 +60,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin, onGoToSignUp
                     <div className="mt-12 md:mt-16">
                         <p className="text-sm text-gray-400 font-medium">
                             By joining, you agree to our
-                            <a href="#" className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Terms</a>
+                            <a href="#" onClick={(e) => e.preventDefault()} className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Terms</a>
                             and
-                            <a href="#" className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Privacy</a>.
+                            <a href="#" onClick={(e) => e.preventDefault()} className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Privacy</a>.
                         </p>
                     </div>
                 </div>

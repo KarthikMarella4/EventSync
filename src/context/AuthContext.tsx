@@ -72,6 +72,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log(`AuthContext: Auth State Change: ${event}`, session?.user?.email);
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+                // Clean up ANY hash from the URL since we don't use hash routing
+                if (window.location.hash || window.location.href.endsWith('#')) {
+                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                }
+
                 if (session?.user) {
                     const domainUser = await mapSupabaseUserToDomainUser(session.user);
                     if (mounted) {

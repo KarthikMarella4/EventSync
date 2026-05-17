@@ -134,7 +134,7 @@ const LoginScreen: React.FC = () => {
           {error && <p className="text-red-500 text-sm font-medium text-center bg-red-50 p-2 rounded-xl border border-red-100">{error}</p>}
 
           <div className="flex justify-end -mt-2">
-            <a className="text-sm font-bold text-secondary hover:text-secondary/80 transition-colors" href="#">
+            <a className="text-sm font-bold text-secondary hover:text-secondary/80 transition-colors" href="#" onClick={(e) => e.preventDefault()}>
               Forgot Password?
             </a>
           </div>

@@ -91,59 +91,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin, onGoToSignUp
 
             {/* ===== MAIN CONTENT ===== */}
             <main className="flex-1 flex flex-col">
-                {/* ===== TRENDING / FEATURES SECTION ===== */}
-                <section className="w-full max-w-7xl mx-auto px-5 md:px-10 py-12 md:py-16">
-                    <h2 className="text-2xl md:text-3xl font-extrabold text-black tracking-tight mb-8">
-                        Trending features
-                    </h2>
 
-                    {/* Feature Cards Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {/* Card 1 */}
-                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
-                            <div className="w-12 h-12 rounded-xl bg-[#f0f0ff] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <span className="material-symbols-outlined text-[24px] text-[#6366f1]">calendar_month</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-black mb-2">Smart Calendar</h3>
-                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                Intuitive calendar view with drag-and-drop event management and smart scheduling.
-                            </p>
-                        </div>
-
-                        {/* Card 2 */}
-                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
-                            <div className="w-12 h-12 rounded-xl bg-[#fff0f0] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <span className="material-symbols-outlined text-[24px] text-[#e11d48]">notifications_active</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-black mb-2">Smart Reminders</h3>
-                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                Never miss an event with intelligent push notifications and reminder scheduling.
-                            </p>
-                        </div>
-
-                        {/* Card 3 */}
-                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
-                            <div className="w-12 h-12 rounded-xl bg-[#f0fff4] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <span className="material-symbols-outlined text-[24px] text-[#22c55e]">confirmation_number</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-black mb-2">Ticket Vault</h3>
-                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                Securely store and organize all your event tickets in one convenient place.
-                            </p>
-                        </div>
-
-                        {/* Card 4 */}
-                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
-                            <div className="w-12 h-12 rounded-xl bg-[#fffbf0] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <span className="material-symbols-outlined text-[24px] text-[#f59e0b]">photo_library</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-black mb-2">Event Gallery</h3>
-                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                Capture and share memories with a beautiful photo gallery for every event.
-                            </p>
-                        </div>
-                    </div>
-                </section>
 
                 {/* ===== FOOTER ===== */}
                 <footer className="w-full border-t border-gray-100 bg-white">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import { Event, Screen, Task } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +43,46 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
   const initDateStr = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
   const [selectedDate, setSelectedDate] = useState<string | null>(initDateStr);
 
+  // NEW: Hero carousel state
+  const [heroIndex, setHeroIndex] = useState(0);
+  const dateScrollerRef = useRef<HTMLDivElement>(null);
+
+  // NEW: Date scroller dates (14 days centered around today)
+  const dateScrollerDates = useMemo(() => {
+    const dates: Date[] = [];
+    for (let i = -3; i < 11; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  }, []);
+
+  // NEW: Stats computed
+  const stats = useMemo(() => {
+    const weekFromNow = new Date();
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+    const todayStr = new Date().toISOString().split('T')[0];
+    return {
+      eventsThisWeek: allEvents.filter(e => {
+        const ed = new Date(e.date);
+        return ed >= new Date(todayStr) && ed <= weekFromNow;
+      }).length,
+      pendingTasks: tasks.filter(t => !t.isCompleted).length,
+      completedTasks: tasks.filter(t => t.isCompleted).length,
+      totalTasks: tasks.length,
+    };
+  }, [allEvents, tasks]);
+
+  // NEW: Hero carousel auto-advance
+  useEffect(() => {
+    if (upcomingToday.length <= 1) return;
+    const interval = setInterval(() => {
+      setHeroIndex(prev => (prev + 1) % upcomingToday.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [upcomingToday.length]);
+
   // Sync with prop
   useEffect(() => {
     if (initialSelectedDate) {
@@ -58,7 +98,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       fetchEvents();
       fetchTasks();
     }
-  }, [user, initialSelectedDate]); // Initial fetch
+  }, [user, initialSelectedDate]);
 
   // Realtime Subscription
   useEffect(() => {
@@ -85,7 +125,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         .from('tasks')
         .select('*')
         .eq('user_id', user?.id)
-        .order('due_date', { ascending: true }); // Show soonest first
+        .order('due_date', { ascending: true });
 
       if (data) {
         setTasks(data.map((t: any) => ({
@@ -106,10 +146,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
   };
 
   const handleTaskUpdate = async (updated: Task) => {
-    // Optimistic Update Local State
     setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
 
-    // Sync to Google
     if (updated.googleTaskId) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -118,7 +156,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
           await updateGoogleTask(updated.googleTaskId, {
             status: updated.isCompleted ? 'completed' : 'needsAction'
           }, token);
-          console.log('Synced task status to Google:', updated.title);
         }
       } catch (err) {
         console.error('Failed to sync task update to Google', err);
@@ -156,7 +193,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
     return { days, firstDay };
   };
 
-
   const viewNextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
@@ -164,7 +200,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
   const viewPrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
-
 
   const fetchEvents = async () => {
     const { data, error } = await supabase
@@ -182,19 +217,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         imageUrl: e.image_url || 'https://picsum.photos/seed/event/800/600',
         category: e.category || 'General',
         distance: '2.5 mi',
-        creatorId: e.creator_id, // Need this to check ownership
+        creatorId: e.creator_id,
         googleCalendarEventId: e.google_calendar_event_id
       }));
       setAllEvents(mappedEvents);
 
-      // Filter for "Today" (Simple string match for now, ideal matches date object)
       const todayStr = new Date().toISOString().split('T')[0];
       setUpcomingToday(mappedEvents.filter(e => e.date === todayStr));
     }
 
-    // Sync Google Tasks Status
     syncGoogleTasks();
-    // Sync Google Events Deletion
     syncGoogleEvents();
   };
 
@@ -204,18 +236,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       const providerToken = session?.provider_token;
       if (!providerToken) return;
 
-      // Fetch Google Events for a wide range (e.g. current month view +/- buffer)
-      // Ideally we fetch based on the 'currentMonth' state, but for simplicity let's do "Now to 6 months"
-      // to catch future events. Past events might be less critical or handled when viewing past months.
       const start = new Date();
-      start.setMonth(start.getMonth() - 1); // Look back 1 month
+      start.setMonth(start.getMonth() - 1);
       const end = new Date();
-      end.setMonth(end.getMonth() + 6); // Look forward 6 months
+      end.setMonth(end.getMonth() + 6);
 
       const googleEvents = await listCalendarEvents(providerToken, start.toISOString(), end.toISOString());
 
-      // Find local events that have a Google ID but are NOT in the fetched list
-      // Filter local events to only those within our fetch range to avoid accidental deletion
       const localEventsToCheck = allEvents.filter(e => {
         if (!e.googleCalendarEventId) return false;
         const eDate = new Date(e.date);
@@ -225,15 +252,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       for (const localEvent of localEventsToCheck) {
         const existsInGoogle = googleEvents.find((ge: any) => ge.id === localEvent.googleCalendarEventId);
         if (!existsInGoogle) {
-          // Determine if it was cancelled
-          // Note: listCalendarEvents by default hides cancelled. If it's missing, it's deleted/cancelled.
-          console.log('Event deleted in Google, syncing deletion:', localEvent.title);
           await supabase.from('events').delete().eq('id', localEvent.id);
-          // Update local state immediately
           setAllEvents(prev => prev.filter(e => e.id !== localEvent.id));
         }
       }
-
     } catch (err) {
       console.error('Event Sync Error', err);
     }
@@ -247,8 +269,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
       const googleTasks = await listGoogleTasks(providerToken);
 
-      // Find tasks in Supabase that are NOT completed, but ARE completed in Google
-      // This is a simple one-way sync from Google -> App on load
       const { data: localTasks } = await supabase
         .from('tasks')
         .select('*')
@@ -256,26 +276,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         .eq('is_completed', false);
 
       if (localTasks && googleTasks) {
-        const isListTruncated = googleTasks.length === 100; // Safety check for pagination
-        console.log(`[Sync] Found ${localTasks.length} local tasks and ${googleTasks.length} Google tasks. Truncated? ${isListTruncated}`);
-
+        const isListTruncated = googleTasks.length === 100;
         for (const localTask of localTasks) {
           if (localTask.google_task_id) {
             const googleTask = googleTasks.find((gt: any) => gt.id === localTask.google_task_id);
-
             if (!googleTask) {
-              console.log(`[Sync] Local task '${localTask.title}' (ID: ${localTask.google_task_id}) NOT found in Google List.`);
-              // Task has ID but not in Google List -> Deleted?
               if (!isListTruncated) {
-                console.log('Task deleted in Google, syncing deletion:', localTask.title);
                 await supabase.from('tasks').delete().eq('id', localTask.id);
-              } else {
-                console.warn('Task missing from Google list, but list truncated. Skipping auto-delete.', localTask.title);
               }
             } else {
-              console.log(`[Sync] Task '${localTask.title}' found. Status: ${googleTask.status}`);
               if (googleTask.status === 'completed') {
-                console.log('Syncing completed task:', localTask.title);
                 await supabase.from('tasks').update({ is_completed: true }).eq('id', localTask.id);
               }
             }
@@ -304,44 +314,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
   const confirmDelete = async () => {
     if (!eventToDelete) return;
-
     setIsDeleting(true);
 
     try {
-      // 1. Get the event details to check for Google Calendar ID
       const { data: eventData } = await supabase
         .from('events')
         .select('google_calendar_event_id')
         .eq('id', eventToDelete)
         .single();
 
-      // 2. If it has a Google Calendar ID, delete it from Google first
       if (eventData?.google_calendar_event_id) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           const providerToken = session?.provider_token;
           if (providerToken) {
-            console.log('Attempting to delete Google Event:', eventData.google_calendar_event_id);
             await deleteCalendarEvent(eventData.google_calendar_event_id, providerToken);
           } else {
-            console.warn('No provider token found with session, skipping Google delete.');
             alert('Note: Could not delete from Google Calendar (Session expired). Please re-login.');
           }
         } catch (googleError: any) {
-          console.error("Failed to delete from Google Calendar", googleError);
           alert(`Failed to delete from Google Calendar: ${googleError.message}`);
         }
       }
 
-      // 3. Delete from Supabase
       const { error } = await supabase.from('events').delete().eq('id', eventToDelete);
-
       if (error) throw error;
-
-      // Success
       setAllEvents(prev => prev.filter(e => e.id !== eventToDelete));
       setEventToDelete(null);
-
     } catch (error: any) {
       alert('Failed to delete: ' + error.message);
     } finally {
@@ -351,49 +350,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
   const confirmTaskDelete = async (taskId: string) => {
     if (!taskId) return;
-    if (!window.confirm("Delete this task?")) return; // Simple confirm for now
+    if (!window.confirm("Delete this task?")) return;
 
     try {
       const { data: taskData } = await supabase.from('tasks').select('google_task_id, google_calendar_event_id').eq('id', taskId).single();
-
       const { data: { session } } = await supabase.auth.getSession();
       const providerToken = session?.provider_token;
 
       if (providerToken) {
-        // 1. Delete from Google Tasks
         if (taskData?.google_task_id) {
           try {
-            console.log('Deleting Google Task:', taskData.google_task_id);
             await deleteGoogleTask(taskData.google_task_id, providerToken);
           } catch (err: any) {
-            console.error("Failed to delete from Google Tasks", err);
             alert(`Failed to sync task deletion: ${err.message}`);
           }
         }
-
-        // 2. Delete from Google Calendar (if exists)
         if (taskData?.google_calendar_event_id) {
           try {
-            console.log('Deleting Google Calendar Event for Task:', taskData.google_calendar_event_id);
             await deleteCalendarEvent(taskData.google_calendar_event_id, providerToken);
           } catch (err: any) {
-            console.error("Failed to delete from Google Calendar", err);
             alert(`Failed to delete Calendar Event for Task: ${err.message}`);
           }
         }
       } else {
-        console.warn('No provider token, skipping Google sync');
         alert('Note: Could not sync deletion to Google (Session expired). Please re-login.');
       }
 
-      // 2. Delete from Supabase
       const { error } = await supabase.from('tasks').delete().eq('id', taskId);
       if (error) throw error;
-
-      // Optimistic Update: Remove from UI immediately
       setTasks(prev => prev.filter(t => t.id !== taskId));
-      // Remove from googleTasks synced list if we want, but local state is main priority
-
     } catch (error: any) {
       alert("Failed to delete task: " + error.message);
     }
@@ -409,8 +394,30 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
     return `${h12}:${m} ${ampm}`;
   };
 
+  // Helper: check if a date scroller date has events/tasks
+  const dateHasActivity = (d: Date) => {
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const hasEvent = allEvents.some(e => e.date === dateStr);
+    const hasTask = tasks.some(t => t.dueDate?.startsWith(dateStr));
+    return { hasEvent, hasTask };
+  };
+
+  // Progress ring helper
+  const taskProgress = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0;
+  const circumference = 2 * Math.PI * 40; // radius 40
+  const strokeDashoffset = circumference - (taskProgress / 100) * circumference;
+
+  // Wave SVG component
+  const WaveDivider = ({ flip = false, color = '#f0fdfa' }: { flip?: boolean; color?: string }) => (
+    <div className={`w-full overflow-hidden leading-[0] ${flip ? 'rotate-180' : ''}`}>
+      <svg viewBox="0 0 1200 80" preserveAspectRatio="none" className="w-full h-6 md:h-10">
+        <path d="M0,40 C150,80 350,0 600,40 C850,80 1050,0 1200,40 L1200,80 L0,80 Z" fill={color} />
+      </svg>
+    </div>
+  );
+
   return (
-    <div className="pb-24 relative max-w-7xl mx-auto w-full min-h-screen bg-white shadow-sm ring-1 ring-gray-100">
+    <div className="pb-24 relative max-w-7xl mx-auto w-full min-h-screen bg-[#fafffe] shadow-sm ring-1 ring-gray-100">
       {/* Delete Confirmation Modal */}
       {eventToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -478,7 +485,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
               ))}
               {Array.from({ length: getDaysInMonth(currentMonth).days }).map((_, i) => {
                 const day = i + 1;
-                // Fix timezone issue by using local construction
                 const year = currentMonth.getFullYear();
                 const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
                 const dayStr = String(day).padStart(2, '0');
@@ -495,7 +501,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                     onClick={() => setSelectedDate(dateStr)}
                     className={`size-10 flex flex-col items-center justify-center rounded-full text-sm font-semibold relative transition-all 
                       ${isSelected
-                        ? 'bg-black text-white scale-110 shadow-lg z-10'
+                        ? 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white scale-110 shadow-lg shadow-teal-400/30 z-10'
                         : isToday
                           ? 'bg-gray-200 text-black'
                           : (hasActivity ? 'bg-gray-50 text-black font-bold' : 'hover:bg-gray-50 text-text-main')
@@ -504,8 +510,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                   >
                     <span>{day}</span>
                     <div className="flex gap-0.5 absolute bottom-1.5">
-                      {hasEvent && <div className="size-1 bg-red-500 rounded-full"></div>}
-                      {hasTask && <div className="size-1 bg-green-500 rounded-full"></div>}
+                      {hasEvent && <div className="size-1 bg-teal-500 rounded-full"></div>}
+                      {hasTask && <div className="size-1 bg-emerald-500 rounded-full"></div>}
                     </div>
                   </button>
                 );
@@ -529,7 +535,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
                   return (
                     <div className="flex flex-col gap-3">
-                      {/* Events */}
                       {dayEvents.map(event => (
                         <div key={event.id} className="flex items-center gap-3 p-2 bg-white border border-gray-100 rounded-xl shadow-sm">
                           <div
@@ -538,18 +543,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                           />
                           <div className="flex-1 min-w-0">
                             <h5 className="text-sm font-bold text-black truncate">{event.title}</h5>
-                            <p className="text-xs text-red-500 font-medium">{formatTime(event.time)} • Event</p>
+                            <p className="text-xs text-teal-600 font-medium">{formatTime(event.time)} • Event</p>
                           </div>
                         </div>
                       ))}
-
-                      {/* Tasks */}
                       {dayTasks.map(task => (
-                        <div key={task.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group/task">
-                          <div className={`size-3 rounded-full border-[3px] ${task.isCompleted ? 'bg-green-500 border-green-500' : 'border-gray-300'}`} />
+                        <div key={task.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                          <div className={`size-3 rounded-full border-[3px] ${task.isCompleted ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'}`} />
                           <div className="flex-1 min-w-0">
                             <h5 className={`text-sm font-bold truncate ${task.isCompleted ? 'text-gray-400 line-through' : 'text-black'}`}>{task.title}</h5>
-                            <p className="text-xs text-green-600 font-medium">Task</p>
+                            <p className="text-xs text-emerald-600 font-medium">Task</p>
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); confirmTaskDelete(task.id); }}
@@ -571,75 +574,114 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         </div>
       )}
 
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-white">
-        <div className="flex items-center p-5 pb-2 justify-between">
-          <div className="flex items-center gap-3.5 flex-1">
-            <div className="relative">
+      {/* ========================================= */}
+      {/* ✨ 1. ANIMATED GRADIENT ACCENT BAR        */}
+      {/* ========================================= */}
+      <div className="animate-gradient-bar h-[3px] w-full sticky top-0 z-50" />
+
+      {/* ========================================= */}
+      {/* ✨ 2. GLASSMORPHISM HEADER                */}
+      {/* ========================================= */}
+      <div className="sticky top-[3px] z-40">
+        <div
+          className="mx-3 mt-3 rounded-2xl p-4 backdrop-blur-xl border border-white/40 shadow-lg"
+          style={{
+            background: 'linear-gradient(135deg, rgba(240,253,250,0.85) 0%, rgba(204,251,241,0.6) 50%, rgba(207,250,254,0.5) 100%)',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="relative">
+                <div
+                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 ring-2 ring-white/80 shadow-md"
+                  style={{ backgroundImage: `url("${user?.avatar || 'https://ui-avatars.com/api/?name=User'}")` }}
+                />
+                <div className="absolute bottom-0 right-0 size-3.5 bg-emerald-400 border-[2.5px] border-white rounded-full animate-pulse-dot"></div>
+              </div>
+              <div>
+                <p className="text-teal-700/70 text-xs font-semibold tracking-wide uppercase">Welcome back</p>
+                <h2 className="text-[#14312A] text-xl font-extrabold leading-tight">{user?.name}</h2>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`relative flex items-center justify-center rounded-full size-11 transition-all hover:scale-105 active:scale-95 shadow-sm ${showNotifications ? 'bg-[#14312A] text-white' : 'bg-white/80 text-[#14312A] border border-white/50'}`}
+              >
+                <span className="material-symbols-outlined text-[22px]">notifications</span>
+                <span className="absolute top-2 right-2.5 size-2 bg-red-500 rounded-full border border-white"></span>
+              </button>
+            </div>
+          </div>
+          <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="px-5 mt-4">
+        <div className="relative group">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-teal-600 transition-colors">
+            <span className="material-symbols-outlined">search</span>
+          </span>
+          <input
+            className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-400/40 text-text-main placeholder-text-muted transition-all shadow-sm font-medium"
+            placeholder="Search events..."
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* ========================================= */}
+      {/* ✨ 10. HERO BANNER CAROUSEL (Happening Today) */}
+      {/* ========================================= */}
+      {!showAllFeatured && upcomingToday.length > 0 && (
+        <section className="px-4 mt-6">
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Happening Today</h3>
+          <div className="relative overflow-hidden rounded-3xl shadow-xl shadow-teal-900/10" style={{ minHeight: 200 }}>
+            {upcomingToday.map((event, idx) => (
               <div
-                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-11 ring-2 ring-gray-100"
-                style={{ backgroundImage: `url("${user?.avatar || 'https://ui-avatars.com/api/?name=User'}")` }}
-              />
-              <div className="absolute bottom-0 right-0 size-3.5 bg-green-500 border-[2.5px] border-white rounded-full"></div>
-            </div>
-            <div>
-              <p className="text-text-muted text-xs font-semibold tracking-wide uppercase">Welcome back</p>
-              <h2 className="text-text-main text-xl font-extrabold leading-tight">{user?.name}</h2>
-            </div>
-          </div>
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className={`relative flex items-center justify-center rounded-full size-11 border border-border-light text-text-main transition-all hover:scale-105 active:scale-95 ${showNotifications ? 'bg-black text-white' : 'bg-surface hover:bg-gray-100'}`}
-            >
-              <span className="material-symbols-outlined text-[24px]">notifications</span>
-              <span className="absolute top-2.5 right-3 size-2 bg-red-500 rounded-full border border-white"></span>
-            </button>
-            <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
-          </div>
-        </div>
-      </div>
-
-      <div className="px-5 pb-4 mt-2">
-        {/* Improved Search Bar Layout */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 group">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-black transition-colors">
-              <span className="material-symbols-outlined">search</span>
-            </span>
-            <input
-              className="w-full h-12 pl-12 pr-4 bg-surface border border-border-light rounded-2xl outline-none focus:ring-2 focus:ring-black/5 focus:border-black/20 text-text-main placeholder-text-muted transition-all shadow-sm font-medium"
-              placeholder="Search events..."
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Upcoming Today (New Section) */}
-      {
-        !showAllFeatured && upcomingToday.length > 0 && (
-          <section className="px-5 mt-6">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Happening Today</h3>
-            <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
-              {upcomingToday.map(event => (
-                <div key={event.id} className="min-w-[260px] p-4 rounded-3xl bg-black text-white flex gap-4 items-center shadow-lg shadow-black/20">
-                  <div
-                    className="size-14 rounded-2xl bg-cover bg-center shrink-0 border border-white/20"
-                    style={{ backgroundImage: `url("${event.imageUrl}")` }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-lg truncate leading-tight">{event.title}</h4>
-                    <p className="text-gray-400 text-xs mt-1 font-medium">{formatTime(event.time)} • {event.location}</p>
+                key={event.id}
+                className={`absolute inset-0 transition-all duration-700 ${idx === heroIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}
+              >
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url("${event.imageUrl}")` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#14312A]/90 via-[#14312A]/30 to-transparent" />
+                <div className="absolute bottom-0 left-0 w-full p-6 text-white">
+                  <h4 className="text-2xl font-extrabold leading-tight mb-1">{event.title}</h4>
+                  <div className="flex items-center gap-4 text-white/80 text-xs font-medium">
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[14px]">schedule</span>
+                      <span>{formatTime(event.time)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[14px]">location_on</span>
+                      <span className="truncate max-w-[150px]">{event.location}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
+            <div className="relative opacity-0 pointer-events-none p-6" style={{ minHeight: 200 }}>
+              <div className="h-full"></div>
             </div>
-          </section>
-        )
-      }
+            {upcomingToday.length > 1 && (
+              <div className="absolute bottom-3 right-4 flex gap-1.5 z-10">
+                {upcomingToday.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setHeroIndex(idx)}
+                    className={`rounded-full transition-all duration-300 ${idx === heroIndex ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/40'}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Featured Events */}
       <section className="mt-6">
@@ -647,7 +689,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
           <h2 className="text-xl font-bold text-text-main">Featured Events</h2>
           <button
             onClick={() => setShowAllFeatured(!showAllFeatured)}
-            className="text-sm font-bold text-secondary hover:text-secondary/80 transition-colors flex items-center gap-0.5"
+            className="text-sm font-bold text-teal-700 hover:text-teal-900 transition-colors flex items-center gap-0.5"
           >
             {showAllFeatured ? 'Show Less' : 'See All'} <span className="material-symbols-outlined text-[16px]">{showAllFeatured ? 'expand_less' : 'chevron_right'}</span>
           </button>
@@ -658,14 +700,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         ) : (
           <div className={`px-5 ${showAllFeatured ? 'grid grid-cols-1 gap-5' : 'flex overflow-x-auto hide-scrollbar gap-5 pb-4 snap-x snap-mandatory'}`}>
             {featuredEvents.map((event) => (
-              <div key={event.id} className={`snap-center shrink-0 ${showAllFeatured ? 'w-full' : 'w-[88%] max-w-[340px]'} relative aspect-[16/10] group cursor-pointer shadow-lg shadow-black/10 hover:shadow-xl transition-all duration-300 active:scale-95`}>
-                {/* Content Wrapper (Clipped) */}
+              <div key={event.id} className={`snap-center shrink-0 ${showAllFeatured ? 'w-full' : 'w-[88%] max-w-[340px]'} relative aspect-[16/10] group cursor-pointer shadow-lg shadow-teal-900/10 hover:shadow-xl transition-all duration-300 active:scale-95`}>
                 <div className="absolute inset-0 rounded-3xl overflow-hidden transform-gpu">
                   <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 group-active:scale-110"
                     style={{ backgroundImage: `url("${event.imageUrl}")` }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#14312A]/80 via-[#14312A]/20 to-transparent" />
 
                   <div className="absolute bottom-0 left-0 w-full p-5 flex flex-col gap-1.5">
                     <h3 className="text-white text-2xl font-bold leading-tight">{event.title}</h3>
@@ -682,9 +723,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                   </div>
                 </div>
 
-                {/* Overlays (Unclipped) */}
                 <div className="absolute inset-0 z-10 pointer-events-none">
-                  {/* Delete Button for Owner */}
                   {/* @ts-ignore */}
                   {user?.id === event.creatorId && (
                     <button
@@ -697,7 +736,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
                   <div className="absolute top-4 right-4 flex items-center gap-2 pointer-events-auto">
                     <ReminderButton eventId={event.id} googleEventId={event.googleCalendarEventId} />
-                    <div className="bg-black/40 backdrop-blur-md border border-white/20 text-white size-8 flex items-center justify-center rounded-full">
+                    <div className="bg-[#14312A]/40 backdrop-blur-md border border-white/20 text-white size-8 flex items-center justify-center rounded-full">
                       <span className="material-symbols-outlined text-[18px]">favorite</span>
                     </div>
                   </div>
@@ -708,137 +747,246 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
         )}
       </section>
 
-      {/* Quick Actions */}
-      {
-        !showAllFeatured && (
-          <section className="px-5 mt-8">
-            <h3 className="text-text-main text-lg font-bold mb-5">Quick Actions</h3>
-            <div className="grid grid-cols-4 gap-4">
-              <button onClick={() => setIsCalendarOpen(true)} className="flex flex-col items-center gap-2.5 group">
-                <div className="size-16 rounded-2xl bg-white text-blue-600 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-blue-50 transition-colors">
-                  <span className="material-symbols-outlined text-[28px]">calendar_month</span>
-                </div>
-                <span className="text-xs font-medium text-text-muted group-hover:text-blue-600 transition-colors">Calendar</span>
-              </button>
-              <button
-                onClick={() => setShowTicketsModal(true)}
-                className="flex flex-col items-center gap-2.5 group"
-              >
-                <div className="size-16 rounded-2xl bg-white text-orange-500 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-orange-50 transition-colors">
-                  <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
-                </div>
-                <span className="text-xs font-medium text-text-muted group-hover:text-orange-500 transition-colors">Tickets</span>
-              </button>
-              <button className="flex flex-col items-center gap-2.5 group">
-                <div className="size-16 rounded-2xl bg-white text-purple-600 border border-border-light flex items-center justify-center shadow-sm group-hover:bg-purple-50 transition-colors">
-                  <span className="material-symbols-outlined text-[28px]">groups</span>
-                </div>
-                <span className="text-xs font-medium text-text-muted group-hover:text-purple-600 transition-colors">Invites</span>
-              </button>
+      {/* ========================================= */}
+      {/* ✨ 6. WAVE SECTION DIVIDER                */}
+      {/* ========================================= */}
+      {!showAllFeatured && <div className="mt-2"><WaveDivider color="#f0fdfa" /></div>}
+
+      {/* ========================================= */}
+      {/* ✨ 7. QUICK ACTIONS AS FLOATING BUBBLES   */}
+      {/* ========================================= */}
+      {!showAllFeatured && (
+        <section className="px-5 py-4 bg-gradient-to-b from-[#f0fdfa] to-[#fafffe]">
+          <h3 className="text-text-main text-lg font-bold mb-5">Quick Actions</h3>
+          <div className="grid grid-cols-3 gap-6 place-items-center">
+            <button onClick={() => setIsCalendarOpen(true)} className="flex flex-col items-center gap-2.5 group animate-bubble">
+              <div className="size-[68px] rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-teal-400/30 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                <span className="material-symbols-outlined text-[28px]">calendar_month</span>
+              </div>
+              <span className="text-xs font-semibold text-[#14312A]">Calendar</span>
+            </button>
+            <button onClick={() => setShowTicketsModal(true)} className="flex flex-col items-center gap-2.5 group animate-bubble animate-bubble-delay-1">
+              <div className="size-[68px] rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-400/30 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
+              </div>
+              <span className="text-xs font-semibold text-[#14312A]">Tickets</span>
+            </button>
+            <button className="flex flex-col items-center gap-2.5 group animate-bubble animate-bubble-delay-2">
+              <div className="size-[68px] rounded-full bg-gradient-to-br from-violet-400 to-purple-500 text-white flex items-center justify-center shadow-lg shadow-violet-400/30 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                <span className="material-symbols-outlined text-[28px]">groups</span>
+              </div>
+              <span className="text-xs font-semibold text-[#14312A]">Invites</span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {!showAllFeatured && <WaveDivider flip color="#f0fdfa" />}
+
+      {/* ========================================= */}
+      {/* ✨ 5. STATS DASHBOARD STRIP               */}
+      {/* ========================================= */}
+      {!showAllFeatured && (
+        <section className="px-4 mt-2 animate-fade-slide-up">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-100/60 rounded-2xl p-3.5 text-center">
+              <div className="flex justify-center mb-1.5">
+                <span className="material-symbols-outlined text-[22px] text-teal-600">event</span>
+              </div>
+              <p className="text-2xl font-extrabold text-[#14312A]">{stats.eventsThisWeek}</p>
+              <p className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider mt-0.5">This Week</p>
             </div>
-          </section>
-        )
-      }
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100/60 rounded-2xl p-3.5 text-center">
+              <div className="flex justify-center mb-1.5">
+                <span className="material-symbols-outlined text-[22px] text-amber-600">task_alt</span>
+              </div>
+              <p className="text-2xl font-extrabold text-[#14312A]">{stats.pendingTasks}</p>
+              <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-0.5">Pending</p>
+            </div>
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/60 rounded-2xl p-3.5 text-center">
+              <div className="flex justify-center mb-1.5">
+                <span className="material-symbols-outlined text-[22px] text-emerald-600">check_circle</span>
+              </div>
+              <p className="text-2xl font-extrabold text-[#14312A]">{stats.completedTasks}</p>
+              <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mt-0.5">Done</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ========================================= */}
+      {/* ✨ 3. HORIZONTAL DATE SCROLLER            */}
+      {/* ========================================= */}
+      {!showAllFeatured && (
+        <div className="mt-8 px-3">
+          <div
+            ref={dateScrollerRef}
+            className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 snap-x snap-mandatory"
+          >
+            {dateScrollerDates.map((d, i) => {
+              const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const isSelected = selectedDate === dateStr;
+              const isToday = d.toDateString() === new Date().toDateString();
+              const { hasEvent, hasTask } = dateHasActivity(d);
+              const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelectedDate(dateStr)}
+                  className={`snap-center shrink-0 flex flex-col items-center gap-1 px-3 py-2.5 rounded-2xl min-w-[52px] transition-all duration-200
+                    ${isSelected
+                      ? 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white shadow-lg shadow-teal-400/30 scale-105'
+                      : isToday
+                        ? 'bg-teal-50 text-[#14312A] border border-teal-200'
+                        : 'bg-white text-gray-600 border border-gray-100 hover:border-teal-200'
+                    }
+                  `}
+                >
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-teal-300' : 'text-gray-400'}`}>
+                    {dayNames[d.getDay()]}
+                  </span>
+                  <span className={`text-lg font-extrabold ${isSelected ? 'text-white' : ''}`}>
+                    {d.getDate()}
+                  </span>
+                  <div className="flex gap-1">
+                    {hasEvent && <div className={`size-1.5 rounded-full ${isSelected ? 'bg-teal-300' : 'bg-teal-500'}`}></div>}
+                    {hasTask && <div className={`size-1.5 rounded-full ${isSelected ? 'bg-emerald-300' : 'bg-emerald-500'}`}></div>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================= */}
+      {/* ✨ 9. TASKS WITH PROGRESS RING            */}
+      {/* ========================================= */}
+      {!showAllFeatured && (
+        <section className="px-5 mt-4">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-xl font-bold text-text-main">Tasks & Agenda</h3>
+            <button className="text-sm font-bold text-teal-700 hover:text-teal-900 transition-colors">View All</button>
+          </div>
+
+          {/* Progress Ring + Summary */}
+          {stats.totalTasks > 0 && (
+            <div className="flex items-center gap-5 mb-5 p-4 bg-gradient-to-r from-teal-50/80 to-cyan-50/60 rounded-2xl border border-teal-100/50">
+              <div className="relative shrink-0">
+                <svg width="80" height="80" className="transform -rotate-90">
+                  <circle cx="40" cy="40" r="34" stroke="#e2e8f0" strokeWidth="6" fill="none" />
+                  <circle
+                    cx="40" cy="40" r="34"
+                    stroke="#0d9488"
+                    strokeWidth="6"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 34}`}
+                    strokeDashoffset={`${2 * Math.PI * 34 - (taskProgress / 100) * 2 * Math.PI * 34}`}
+                    className="progress-ring-circle"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-lg font-extrabold text-[#14312A]">{Math.round(taskProgress)}%</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-[#14312A] font-bold text-base">
+                  {stats.completedTasks} of {stats.totalTasks} tasks done
+                </p>
+                <p className="text-teal-600 text-sm font-medium mt-0.5">
+                  {stats.pendingTasks === 0 ? '🎉 All caught up!' : `${stats.pendingTasks} task${stats.pendingTasks > 1 ? 's' : ''} remaining`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3">
+            {tasks.filter(t => !t.isCompleted).length === 0 ? (
+              <p className="text-gray-400 text-sm">No tasks pending. Great job! 🎉</p>
+            ) : (
+              tasks.filter(t => !t.isCompleted).slice(0, 3).map(task => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onUpdate={handleTaskUpdate}
+                  onDelete={confirmTaskDelete}
+                />
+              ))
+            )}
+          </div>
+        </section>
+      )}
 
       {showTicketsModal && <TicketsListModal onClose={() => setShowTicketsModal(false)} />}
 
+      {/* Recommended (at very bottom) */}
+      {!showAllFeatured && recommendedEvents.length > 0 && (
+        <section className="px-5 mt-8 border-t border-gray-100 pt-8">
+          <h3 className="text-lg font-bold text-text-main mb-5">Recommended For You</h3>
+          <div className="flex flex-col gap-4">
+            {recommendedEvents.map((event) => (
+              <div key={event.id} className="bg-white p-3 rounded-2xl flex gap-4 shadow-soft border border-border-light hover:border-teal-200/50 transition-colors cursor-pointer group">
+                <div
+                  className="w-24 aspect-square rounded-xl bg-cover bg-center shrink-0 relative overflow-hidden"
+                  style={{ backgroundImage: `url("${event.imageUrl}")` }}
+                />
+                <div className="flex flex-col justify-between py-1 flex-1">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${event.category === 'Wellness' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-teal-700 bg-teal-50 border border-teal-100'
+                        }`}>
+                        {event.category}
+                      </span>
+                      <span className="text-[11px] font-medium text-text-muted flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px]">near_me</span>
+                        {event.distance}
+                      </span>
 
-      {/* Recommended */}
-      {
-        !showAllFeatured && recommendedEvents.length > 0 && (
-          <section className="px-5 mt-8">
-            <h3 className="text-lg font-bold text-text-main mb-5">Recommended For You</h3>
-            <div className="flex flex-col gap-4">
-              {recommendedEvents.map((event) => (
-                <div key={event.id} className="bg-white p-3 rounded-2xl flex gap-4 shadow-soft border border-border-light hover:border-black/10 transition-colors cursor-pointer group">
-                  <div
-                    className="w-24 aspect-square rounded-xl bg-cover bg-center shrink-0 relative overflow-hidden"
-                    style={{ backgroundImage: `url("${event.imageUrl}")` }}
-                  />
-                  <div className="flex flex-col justify-between py-1 flex-1">
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${event.category === 'Wellness' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-purple-700 bg-purple-50 border border-purple-100'
-                          }`}>
-                          {event.category}
-                        </span>
-                        <span className="text-[11px] font-medium text-text-muted flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px]">near_me</span>
-                          {event.distance}
-                        </span>
-
-                        {/* Actions: delete + reminder */}
-                        <div className="ml-auto flex items-center gap-1">
-                          <ReminderButton eventId={event.id} googleEventId={event.googleCalendarEventId} className="scale-90" />
-
-                          {/* @ts-ignore */}
-                          {user?.id === event.creatorId && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setEventToDelete(event.id); }}
-                              className="text-red-500 hover:text-red-700 p-1"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
-                            </button>
-                          )}
-                        </div>
+                      <div className="ml-auto flex items-center gap-1">
+                        <ReminderButton eventId={event.id} googleEventId={event.googleCalendarEventId} className="scale-90" />
+                        {/* @ts-ignore */}
+                        {user?.id === event.creatorId && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEventToDelete(event.id); }}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        )}
                       </div>
-                      <h4 className="text-text-main font-bold text-[15px] leading-snug line-clamp-2">{event.title}</h4>
-                      <p className="text-text-muted text-xs font-medium mt-1">{event.date} • {formatTime(event.time)}</p>
                     </div>
-                    {event.attendeesCount && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex -space-x-2 overflow-hidden">
-                          {event.attendeesAvatars?.map((av, i) => (
-                            <img key={i} src={av} className="inline-block size-5 rounded-full ring-2 ring-white object-cover" alt="User" />
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-text-muted font-semibold">+{event.attendeesCount} going</span>
-                      </div>
-                    )}
-                    {event.id === 'r2' && (
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <span className="text-[10px] text-text-main font-semibold flex items-center gap-1 bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
-                          <span className="material-symbols-outlined text-[12px] text-amber-500 fill-amber-500">star</span>
-                          4.9
-                        </span>
-                        <span className="text-[10px] text-text-muted">(120 reviews)</span>
-                      </div>
-                    )}
+                    <h4 className="text-text-main font-bold text-[15px] leading-snug line-clamp-2">{event.title}</h4>
+                    <p className="text-text-muted text-xs font-medium mt-1">{event.date} • {formatTime(event.time)}</p>
                   </div>
+                  {event.attendeesCount && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex -space-x-2 overflow-hidden">
+                        {event.attendeesAvatars?.map((av, i) => (
+                          <img key={i} src={av} className="inline-block size-5 rounded-full ring-2 ring-white object-cover" alt="User" />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-text-muted font-semibold">+{event.attendeesCount} going</span>
+                    </div>
+                  )}
+                  {event.id === 'r2' && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="text-[10px] text-text-main font-semibold flex items-center gap-1 bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
+                        <span className="material-symbols-outlined text-[12px] text-amber-500 fill-amber-500">star</span>
+                        4.9
+                      </span>
+                      <span className="text-[10px] text-text-muted">(120 reviews)</span>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </section>
-        )
-      }
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* Tasks Section */}
-      {
-        !showAllFeatured && (
-          <section className="px-5 mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-text-main">Tasks & Agenda</h3>
-              <button className="text-sm font-bold text-secondary">View All</button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {tasks.filter(t => !t.isCompleted).length === 0 ? (
-                <p className="text-gray-400 text-sm">No tasks pending. Great job!</p>
-              ) : (
-                tasks.filter(t => !t.isCompleted).slice(0, 3).map(task => (
-                  <TaskItem
-                    key={task.id}
-                    task={task}
-                    onUpdate={handleTaskUpdate}
-                    onDelete={confirmTaskDelete}
-                  />
-                ))
-              )}
-            </div>
-          </section>
-        )
-      }
-    </div >
+    </div>
   );
 };
 

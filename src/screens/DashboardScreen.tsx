@@ -69,13 +69,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
           reminderTime: t.reminder_time,
           createdAt: t.created_at
         })));
-      } else {
-        // Mock
-        setTasks([
-          { id: '1', userId: 'u1', title: 'Buy Event Supplies', isCompleted: false, dueDate: new Date().toISOString(), createdAt: '', description: 'Balloons' }
-        ]);
       }
-
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -89,7 +83,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
         await navigator.share({
           title: event.title,
           text: `Join me at ${event.title} !`,
-          url: window.location.href // Ideally deep link
+          url: window.location.href
         });
       } else {
         await navigator.clipboard.writeText(`Join me at ${event.title}: ${window.location.href} `);
@@ -113,7 +107,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
     const fileName = `gallery/${uploadingForEventId}/${Math.random()}.${fileExt}`;
 
     try {
-      // 1. Upload to Storage
       const { error: uploadError } = await supabase.storage
         .from('event-images')
         .upload(fileName, file);
@@ -124,7 +117,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
         .from('event-images')
         .getPublicUrl(fileName);
 
-      // 2. Insert into event_photos table
       const { error: dbError } = await supabase
         .from('event_photos')
         .insert({
@@ -134,11 +126,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
         });
 
       if (dbError) throw dbError;
-
       alert('Photo uploaded to gallery successfully!');
-
     } catch (error: any) {
-      console.error('Upload failed:', error);
       alert(`Upload failed: ${error.message}`);
     } finally {
       setUploadingForEventId(null);
@@ -156,7 +145,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
     return `${h12}:${m} ${ampm}`;
   };
 
-  // Filter Logic
   const filteredEvents = events.filter(e => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -164,8 +152,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
   });
 
   return (
-    <div className="pb-28 max-w-7xl mx-auto w-full min-h-screen bg-white shadow-sm ring-1 ring-gray-100">
-      {/* Hidden File Input */}
+    <div className="pb-28 max-w-7xl mx-auto w-full min-h-screen bg-[#fafffe] shadow-sm relative">
+      <div className="animate-gradient-bar h-[3px] w-full sticky top-0 z-50" />
+      
       <input
         type="file"
         ref={fileInputRef}
@@ -174,75 +163,87 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
         accept="image/*"
       />
 
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 py-4 border-b border-border-light space-y-4">
-        <div className="flex items-center justify-center pt-2">
-          <h1 className="text-xl font-bold leading-tight text-black">Calendar</h1>
+      {/* Glassmorphism Header */}
+      <div className="sticky top-[3px] z-40 px-3 pt-3">
+        <div
+          className="rounded-2xl p-4 backdrop-blur-xl border border-white/40 shadow-lg mb-4"
+          style={{
+            background: 'linear-gradient(135deg, rgba(240,253,250,0.85) 0%, rgba(204,251,241,0.6) 50%, rgba(207,250,254,0.5) 100%)',
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-2xl font-extrabold text-[#14312A] tracking-tight">Calendar</h1>
+            <div className="size-10 rounded-full bg-white/60 flex items-center justify-center text-teal-700 shadow-sm">
+              <span className="material-symbols-outlined">event_note</span>
+            </div>
+          </div>
+          
+          <div className="relative group">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-teal-600/70 group-focus-within:text-teal-600 transition-colors">
+              <span className="material-symbols-outlined text-[20px]">search</span>
+            </span>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-11 pr-4 bg-white/80 border border-white/50 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-400/50 text-sm font-semibold transition-all placeholder:text-teal-900/40 text-[#14312A] shadow-sm"
+              placeholder="Search your events..."
+              type="text"
+            />
+          </div>
         </div>
-
-        {/* Search Bar */}
-        <div className="relative group">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-black transition-colors">
-            <span className="material-symbols-outlined">search</span>
-          </span>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-11 pr-4 bg-surface border border-border-light rounded-xl outline-none focus:ring-2 focus:ring-black/5 focus:border-black/20 text-sm font-medium transition-all"
-            placeholder="Search your events..."
-            type="text"
-          />
-        </div>
-      </header>
+      </div>
 
       {/* Hosting / Created Events */}
-      <section className="mt-6">
+      <section className="mt-4">
         <div className="px-5 mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight">Created by You <span className="text-text-muted font-medium text-lg ml-1">({filteredEvents.length})</span></h2>
+          <h2 className="text-lg font-bold text-[#14312A]">Created by You <span className="text-teal-600/60 font-semibold text-sm ml-1">({filteredEvents.length})</span></h2>
         </div>
 
         {loading ? (
-          <div className="px-5 text-sm text-gray-400">Loading events...</div>
+          <div className="px-5 flex items-center justify-center py-10">
+            <div className="size-8 border-4 border-teal-100 border-t-teal-500 rounded-full animate-spin"></div>
+          </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="px-5 text-sm text-gray-400">
-            {searchQuery ? 'No events found.' : "You haven't created any events yet."}
+          <div className="px-5 py-8 text-center bg-gradient-to-br from-teal-50 to-cyan-50 mx-4 rounded-3xl border border-teal-100/50">
+            <span className="material-symbols-outlined text-4xl text-teal-300 mb-2">event_busy</span>
+            <p className="text-sm font-semibold text-teal-800/60">
+              {searchQuery ? 'No events found.' : "You haven't created any events yet."}
+            </p>
           </div>
         ) : (
-          <div className="flex overflow-x-auto no-scrollbar gap-4 px-5 pb-2">
+          <div className="flex overflow-x-auto hide-scrollbar gap-5 px-5 pb-4 snap-x snap-mandatory">
             {filteredEvents.map(event => (
-              <div key={event.id} className="flex-none w-80 bg-white rounded-3xl p-4 shadow-soft border border-border-light flex flex-col gap-4">
+              <div key={event.id} className="snap-center shrink-0 w-[85%] max-w-[320px] bg-white rounded-3xl p-4 shadow-lg shadow-teal-900/5 border border-teal-50 flex flex-col gap-4 transition-all hover:shadow-xl hover:-translate-y-1">
                 <div
-                  className="h-36 w-full rounded-2xl bg-cover bg-center relative overflow-hidden"
+                  className="h-40 w-full rounded-2xl bg-cover bg-center relative overflow-hidden group"
                   style={{ backgroundImage: `url("${event.imageUrl}")` }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#14312A]/80 via-[#14312A]/10 to-transparent transition-opacity group-hover:opacity-90"></div>
                   <div className="absolute bottom-3 left-3 text-white">
-                    <div className="flex items-center gap-1 text-xs font-semibold bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg border border-white/20 w-fit">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/30 w-fit shadow-sm">
                       <span className="material-symbols-outlined text-[14px]">calendar_today</span>
                       <span>{event.date}</span>
                     </div>
                   </div>
 
-                  {/* Upload Button Overlay */}
                   <button
                     onClick={() => onUploadClick(event.id)}
-                    className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 backdrop-blur-md text-white p-2 rounded-full transition-all"
+                    className="absolute top-3 right-3 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white p-2 rounded-full border border-white/30 transition-all shadow-sm opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
                     title="Upload Photo to Gallery"
                   >
-                    <span className="material-symbols-outlined text-[20px]">add_a_photo</span>
+                    <span className="material-symbols-outlined text-[18px]">add_a_photo</span>
                   </button>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <h3 className="font-bold text-lg text-black truncate">{event.title}</h3>
-                  <div className="flex items-center gap-2 text-text-muted text-sm font-medium">
-                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[18px]">schedule</span> {formatTime(event.time)}</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                    <span className="flex items-center gap-1 truncate"><span className="material-symbols-outlined text-[18px]">location_on</span> {event.location}</span>
+                <div className="flex flex-col gap-1.5 px-1">
+                  <h3 className="font-extrabold text-xl text-[#14312A] truncate">{event.title}</h3>
+                  <div className="flex items-center gap-3 text-teal-700/70 text-xs font-semibold">
+                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">schedule</span> {formatTime(event.time)}</span>
+                    <span className="flex items-center gap-1 truncate"><span className="material-symbols-outlined text-[16px]">location_on</span> {event.location}</span>
                   </div>
                 </div>
                 <div className="flex gap-3 mt-1">
-                  <button onClick={() => onEditEvent && onEditEvent(event)} className="flex-1 bg-black text-white py-2.5 rounded-xl text-sm font-bold hover:scale-[1.02] active:scale-[0.98] transition-all">Edit</button>
-                  <button onClick={() => handleShare(event)} className="flex-1 bg-surface text-black border border-border-light py-2.5 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all">Share</button>
+                  <button onClick={() => onEditEvent && onEditEvent(event)} className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-md shadow-teal-500/20 hover:shadow-lg hover:from-teal-400 hover:to-cyan-400 transition-all">Edit</button>
+                  <button onClick={() => handleShare(event)} className="flex-1 bg-teal-50 text-teal-700 py-2.5 rounded-xl text-sm font-bold hover:bg-teal-100 transition-all">Share</button>
                 </div>
               </div>
             ))}
@@ -250,18 +251,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
         )}
       </section>
 
-      {/* Tabs / Filter */}
+      {/* View Toggles & List */}
       <section className="mt-8 px-5">
-        <div className="bg-surface p-1 rounded-2xl flex border border-border-light mb-6">
+        <div className="bg-teal-50/50 p-1.5 rounded-2xl flex border border-teal-100/50 mb-6 shadow-sm">
           <button
             onClick={() => setActiveTab('calendar')}
-            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'calendar' ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'calendar' ? 'bg-white text-teal-800 shadow-md shadow-teal-900/5' : 'text-teal-600/60 hover:text-teal-700'}`}
           >
             Events ({filteredEvents.length})
           </button>
           <button
             onClick={() => setActiveTab('tasks')}
-            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'tasks' ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'tasks' ? 'bg-white text-teal-800 shadow-md shadow-teal-900/5' : 'text-teal-600/60 hover:text-teal-700'}`}
           >
             Tasks ({tasks.length})
           </button>
@@ -269,28 +270,42 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onEditEvent }) => {
 
         <div className="flex flex-col gap-4 pb-20">
           {activeTab === 'calendar' ? (
-            filteredEvents.map(event => (
-              <div key={event.id} className="group relative bg-white rounded-3xl p-5 flex gap-5 shadow-sharp border border-border-light hover:border-black/20 active:scale-[0.99] transition-all">
-                <div className="flex-none w-16 flex flex-col items-center justify-center bg-black text-white rounded-2xl py-3 h-fit shadow-md shadow-black/20">
-                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
-                  <span className="text-2xl font-bold">{new Date(event.date).getDate()}</span>
-                </div>
-                <div className="flex-1 flex flex-col justify-center gap-1.5">
-                  <h3 className="text-lg font-bold text-black leading-tight">{event.title}</h3>
-                  <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-text-muted">
-                    <span className="flex items-center gap-1 bg-surface px-2 py-0.5 rounded-md border border-border-light"><span className="material-symbols-outlined text-[16px]">schedule</span> {formatTime(event.time)}</span>
-                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">location_on</span> {event.location}</span>
+            filteredEvents.length === 0 ? (
+               <p className="text-center text-teal-600/60 py-10 font-semibold text-sm">No events in list view.</p>
+            ) : (
+              filteredEvents.map(event => (
+                <div key={event.id} className="group relative bg-white rounded-3xl p-4 flex gap-4 shadow-soft border border-teal-50 hover:border-teal-200/50 hover:shadow-lg transition-all duration-300">
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-gradient-to-b from-teal-400 to-cyan-400 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  
+                  <div className="flex-none w-16 flex flex-col items-center justify-center bg-gradient-to-br from-[#14312A] to-teal-900 text-white rounded-2xl py-3 h-fit shadow-md shadow-teal-900/20">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-teal-200">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
+                    <span className="text-2xl font-extrabold">{new Date(event.date).getDate()}</span>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
+                    <h3 className="text-base font-extrabold text-[#14312A] leading-tight truncate">{event.title}</h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-teal-700/60">
+                      <span className="flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-100"><span className="material-symbols-outlined text-[14px]">schedule</span> {formatTime(event.time)}</span>
+                      <span className="flex items-center gap-1 truncate"><span className="material-symbols-outlined text-[14px]">location_on</span> {event.location}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end justify-between gap-2 shrink-0">
+                    <div className="size-12 rounded-full bg-cover bg-center border-2 border-white shadow-md ring-2 ring-teal-50" style={{ backgroundImage: `url("${event.imageUrl}")` }}></div>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-bold uppercase tracking-wider">Hosting</span>
                   </div>
                 </div>
-                <div className="flex flex-col items-end justify-between gap-2">
-                  <div className="h-14 w-14 rounded-full bg-cover bg-center border-2 border-surface-dark shadow-sm" style={{ backgroundImage: `url("${event.imageUrl}")` }}></div>
-                  <span className="px-2.5 py-1 rounded-lg bg-green-50 text-green-700 border border-green-100 text-[10px] font-bold uppercase tracking-wide">Hosting</span>
-                </div>
-              </div>
-            ))
+              ))
+            )
           ) : (
             <div className="flex flex-col gap-3">
-              {tasks.length === 0 && <p className="text-center text-gray-400 py-10">No tasks found.</p>}
+              {tasks.length === 0 && (
+                <div className="py-10 text-center flex flex-col items-center gap-2">
+                  <div className="size-16 rounded-full bg-teal-50 flex items-center justify-center text-teal-300 mb-2">
+                    <span className="material-symbols-outlined text-3xl">task_alt</span>
+                  </div>
+                  <p className="text-teal-800 font-bold">You're all caught up!</p>
+                  <p className="text-xs text-teal-600/60 font-medium">No pending tasks found.</p>
+                </div>
+              )}
               {tasks.map(task => (
                 <TaskItem
                   key={task.id}

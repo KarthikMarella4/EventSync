@@ -6,67 +6,163 @@ interface WelcomeScreenProps {
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin, onGoToSignUp }) => {
+
     return (
-        <div className="relative flex min-h-screen w-full flex-col md:flex-row overflow-x-hidden font-display bg-white">
-            {/* Hero Image Section - Top on mobile, Right side on desktop */}
-            <div className="relative w-full h-[45vh] md:h-screen md:w-1/2 md:order-2 shrink-0 overflow-hidden">
-                <div
-                    className="w-full h-full bg-cover bg-center transition-transform duration-[10000ms] hover:scale-105"
-                    style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCRPb9BsmNWrpf0AeC35bkocu8QT1G0QOV13MM4kllxx64bQg1UG_H29k0UTxYcsawoylgPNjo9SNvQKUaemrT9uLNEkBDVivGVWUfwIhWapZEs9LakY0X48BAEibAO6-cs5tSnlv1ORLVapgqFR7XsX3t4kCEA7Q2E8H6OWxEwzoTxqK4XNJ4DMdtZxAX7mvmgpT-SYRKlFDAM-EOxoOhn1nEqxkqnHDFpJkvdTm7ic7wwLSSGAUMtKoRocmw9R82ymxraJJWFWw4')" }}
-                />
-                {/* Mobile Gradient (Bottom) */}
-                <div className="absolute bottom-0 left-0 w-full h-32 md:hidden bg-gradient-to-t from-white to-transparent"></div>
-                {/* Desktop Gradient (Left side of the image to blend into the content) */}
-                <div className="hidden md:block absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white to-transparent"></div>
-            </div>
-            {/* Content Section - Bottom on mobile, Left side on desktop */}
-            <div className="relative z-10 flex-1 flex flex-col items-start justify-center py-10 md:py-20 px-6 md:px-16 lg:px-24 bg-white w-full md:order-1">
-                <div className="flex flex-col items-start w-full max-w-lg">
-                    {/* Brand Identity */}
-                    <div className="mb-6 md:mb-10 flex items-center justify-start gap-3">
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/30">
-                            <span className="material-symbols-outlined text-[24px] md:text-[28px]">event</span>
+        <div className="min-h-screen w-full font-display bg-white flex flex-col overflow-x-hidden">
+            {/* ===== HERO + NAV WRAPPER with gradient ===== */}
+            <div
+                style={{
+                    background: 'linear-gradient(180deg, #c4f0f5 0%, #d8f6fa 20%, #e8fbfd 45%, #f5fefe 70%, #ffffff 100%)',
+                }}
+            >
+                {/* ===== DESKTOP NAVBAR ===== */}
+                <header className="hidden md:block w-full sticky top-0 z-50">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-10 h-[72px] flex items-center justify-between">
+                        {/* Brand Name */}
+                        <span className="text-black text-xl font-extrabold tracking-tight italic">EventSync</span>
+
+                        {/* Auth Buttons */}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={onGoToLogin}
+                                className="h-10 px-6 text-black text-[15px] font-semibold rounded-full border border-gray-400/50 hover:bg-white/50 transition-all"
+                            >
+                                Log in
+                            </button>
+                            <button
+                                onClick={onGoToSignUp}
+                                className="h-10 px-6 bg-[#1a1a1a] text-white text-[15px] font-semibold rounded-full hover:bg-black transition-all"
+                            >
+                                Sign up
+                            </button>
                         </div>
-                        <span className="text-2xl md:text-3xl font-bold tracking-tight text-text-main">EventSync</span>
                     </div>
+                </header>
+
+                {/* ===== MOBILE HEADER ===== */}
+                <header className="md:hidden w-full sticky top-0 z-50">
+                    <div className="px-4 h-[68px] flex items-center justify-between">
+                        {/* Brand Name */}
+                        <span className="text-black text-lg font-extrabold tracking-tight italic">EventSync</span>
+
+                        {/* Auth Buttons */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={onGoToLogin}
+                                className="h-10 px-5 text-black text-[15px] font-semibold rounded-full border border-gray-400/50 bg-white hover:bg-gray-50 transition-all"
+                            >
+                                Log in
+                            </button>
+                            <button
+                                onClick={onGoToSignUp}
+                                className="h-10 px-5 bg-[#1a1a1a] text-white text-[15px] font-semibold rounded-full hover:bg-black transition-all"
+                            >
+                                Sign up
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* ===== HERO SECTION ===== */}
+                <section className="w-full flex flex-col items-center text-center px-5 pt-16 md:pt-24 pb-20 md:pb-28">
+
+
                     {/* Headline */}
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-text-main mb-6 md:mb-8 leading-[1.1] text-left">
-                        Events that match <br />
-                        <span className="text-primary">your lifestyle.</span>
+                    <h1 className="text-[clamp(2.5rem,8vw,4.5rem)] font-extrabold tracking-tight text-black leading-[1.05] max-w-3xl mb-6 md:mb-8">
+                        Sync your events,{' '}
+                        <br className="hidden md:block" />
+                        stay organized
                     </h1>
-                    {/* Subtext */}
-                    <p className="text-lg md:text-xl font-medium text-gray-500 max-w-md leading-relaxed mb-10 md:mb-12 text-left">
-                        Plan your events, never miss a reminder, store your tickets, and stay on top of daily tasks.
+
+                    {/* Subtitle */}
+                    <p className="text-base md:text-lg text-gray-600 font-medium max-w-xl leading-relaxed mb-10 md:mb-12 px-2">
+                        EventSync helps you plan events, manage calendars, store tickets, and never miss a reminder.
                     </p>
-                    {/* Actions */}
-                    <div className="flex flex-col gap-4 w-full max-w-md">
-                        <button
-                            onClick={onGoToSignUp}
-                            className="group w-full h-20 bg-[#130d1b] text-white rounded-3xl flex items-center justify-between px-8 text-xl font-bold shadow-2xl shadow-black/10 hover:shadow-primary/20 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
-                        >
-                            <span>Sign Up</span>
-                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                                <span className="material-symbols-outlined text-[22px]">arrow_forward</span>
-                            </div>
-                        </button>
-                        <button
-                            onClick={onGoToLogin}
-                            className="w-full h-20 bg-transparent border-2 border-gray-200 text-[#130d1b] rounded-3xl flex items-center justify-center text-xl font-bold hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] transition-all duration-200"
-                        >
-                            Log In
-                        </button>
-                    </div>
-                    {/* Footer Links */}
-                    <div className="mt-12 md:mt-16">
-                        <p className="text-sm text-gray-400 font-medium">
-                            By joining, you agree to our
-                            <a href="#" onClick={(e) => e.preventDefault()} className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Terms</a>
-                            and
-                            <a href="#" onClick={(e) => e.preventDefault()} className="mx-1 text-text-main underline decoration-gray-200 hover:decoration-primary transition-all">Privacy</a>.
-                        </p>
-                    </div>
-                </div>
+
+                    {/* CTA Button */}
+                    <button
+                        onClick={onGoToSignUp}
+                        className="w-full max-w-md md:w-auto h-14 md:h-[52px] px-10 bg-black text-white text-lg font-bold rounded-full hover:bg-gray-900 active:scale-[0.98] transition-all shadow-xl shadow-black/10"
+                    >
+                        Sign up now
+                    </button>
+                </section>
             </div>
+
+            {/* ===== MAIN CONTENT ===== */}
+            <main className="flex-1 flex flex-col">
+                {/* ===== TRENDING / FEATURES SECTION ===== */}
+                <section className="w-full max-w-7xl mx-auto px-5 md:px-10 py-12 md:py-16">
+                    <h2 className="text-2xl md:text-3xl font-extrabold text-black tracking-tight mb-8">
+                        Trending features
+                    </h2>
+
+                    {/* Feature Cards Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Card 1 */}
+                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
+                            <div className="w-12 h-12 rounded-xl bg-[#f0f0ff] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <span className="material-symbols-outlined text-[24px] text-[#6366f1]">calendar_month</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-black mb-2">Smart Calendar</h3>
+                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                Intuitive calendar view with drag-and-drop event management and smart scheduling.
+                            </p>
+                        </div>
+
+                        {/* Card 2 */}
+                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
+                            <div className="w-12 h-12 rounded-xl bg-[#fff0f0] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <span className="material-symbols-outlined text-[24px] text-[#e11d48]">notifications_active</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-black mb-2">Smart Reminders</h3>
+                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                Never miss an event with intelligent push notifications and reminder scheduling.
+                            </p>
+                        </div>
+
+                        {/* Card 3 */}
+                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
+                            <div className="w-12 h-12 rounded-xl bg-[#f0fff4] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <span className="material-symbols-outlined text-[24px] text-[#22c55e]">confirmation_number</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-black mb-2">Ticket Vault</h3>
+                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                Securely store and organize all your event tickets in one convenient place.
+                            </p>
+                        </div>
+
+                        {/* Card 4 */}
+                        <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all cursor-pointer">
+                            <div className="w-12 h-12 rounded-xl bg-[#fffbf0] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <span className="material-symbols-outlined text-[24px] text-[#f59e0b]">photo_library</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-black mb-2">Event Gallery</h3>
+                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                Capture and share memories with a beautiful photo gallery for every event.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ===== FOOTER ===== */}
+                <footer className="w-full border-t border-gray-100 bg-white">
+                    <div className="max-w-7xl mx-auto px-5 md:px-10 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-2.5">
+                            <img src="/favicon.png" alt="EventSync" className="w-7 h-7 rounded-lg" />
+                            <span className="text-lg font-extrabold tracking-tight text-black italic">EventSync</span>
+                        </div>
+                        <p className="text-sm text-gray-400 font-medium">
+                            © 2026 EventSync. All rights reserved.
+                        </p>
+                        <div className="flex items-center gap-6">
+                            <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-gray-500 font-medium hover:text-black transition-colors">Terms</a>
+                            <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-gray-500 font-medium hover:text-black transition-colors">Privacy</a>
+                            <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-gray-500 font-medium hover:text-black transition-colors">Contact</a>
+                        </div>
+                    </div>
+                </footer>
+            </main>
         </div>
     );
 };

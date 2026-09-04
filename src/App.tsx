@@ -49,10 +49,10 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 shadow-2xl relative overflow-x-hidden flex flex-col">
+    <div className={`w-full min-h-screen shadow-2xl relative overflow-x-hidden flex flex-col ${currentScreen === 'home' ? 'bg-[#0a0a0a]' : 'bg-gray-50'}`}>
       {/* Dynamic Content */}
       <div className="flex-1 w-full flex justify-center">
-        <div className="w-full max-w-7xl bg-white min-h-screen shadow-xl">
+        <div className={`w-full max-w-7xl min-h-screen shadow-xl ${currentScreen === 'home' ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
           <div style={{ display: currentScreen === 'home' ? 'block' : 'none' }} className="h-full">
             <HomeScreen onNavigate={(s) => setCurrentScreen(s)} initialSelectedDate={targetDate} />
           </div>
@@ -70,11 +70,11 @@ const AppContent: React.FC = () => {
 
       {/* Persistent Bottom Nav - Hidden on Desktop if we want side nav? For now keep bottom nav but centered */}
       <div className="fixed bottom-0 left-0 right-0 pointer-events-none z-50">
-        <nav className="pointer-events-auto max-w-7xl mx-auto w-full glass-nav pb-8 pt-3 px-6 md:rounded-t-3xl md:mx-auto md:w-auto md:max-w-md md:mb-4 md:shadow-2xl md:border md:border-white/20">
+        <nav className={`pointer-events-auto max-w-7xl mx-auto w-full pb-8 pt-3 px-6 md:rounded-t-3xl md:mx-auto md:w-auto md:max-w-md md:mb-4 md:shadow-2xl md:border ${currentScreen === 'home' ? 'glass-nav-dark md:border-white/5' : 'glass-nav md:border-white/20'}`}>
           <div className="flex items-center justify-between relative">
             <button
               onClick={() => setCurrentScreen('home')}
-              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'home' ? 'text-black' : 'text-text-muted'}`}
+              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'home' ? 'text-white' : 'text-text-muted'}`}
             >
               <span className={`material-symbols-outlined text-[26px] ${currentScreen === 'home' ? 'fill-current' : ''}`}>home</span>
               <span className="text-[10px] font-bold">Home</span>
@@ -82,7 +82,7 @@ const AppContent: React.FC = () => {
 
             <button
               onClick={() => setCurrentScreen('dashboard')}
-              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'dashboard' ? 'text-black' : 'text-text-muted'}`}
+              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'dashboard' ? (currentScreen === 'home' ? 'text-white' : 'text-black') : (currentScreen === 'home' ? 'text-gray-500' : 'text-text-muted')}`}
             >
               <span className={`material-symbols-outlined text-[26px] ${currentScreen === 'dashboard' ? 'fill-current' : ''}`}>calendar_month</span>
               <span className="text-[10px] font-bold">Calendar</span>
@@ -97,7 +97,7 @@ const AppContent: React.FC = () => {
 
             <button
               onClick={() => setCurrentScreen('gallery')}
-              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'gallery' ? 'text-black' : 'text-text-muted'}`}
+              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'gallery' ? (currentScreen === 'home' ? 'text-white' : 'text-black') : (currentScreen === 'home' ? 'text-gray-500' : 'text-text-muted')}`}
             >
               <span className={`material-symbols-outlined text-[26px] ${currentScreen === 'gallery' ? 'fill-current' : ''}`}>photo_library</span>
               <span className="text-[10px] font-bold">Gallery</span>
@@ -105,7 +105,7 @@ const AppContent: React.FC = () => {
 
             <button
               onClick={() => setCurrentScreen('profile')}
-              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'profile' ? 'text-black' : 'text-text-muted'}`}
+              className={`flex flex-col items-center gap-1 p-2 transition-all ${currentScreen === 'profile' ? (currentScreen === 'home' ? 'text-white' : 'text-black') : (currentScreen === 'home' ? 'text-gray-500' : 'text-text-muted')}`}
             >
               <span className={`material-symbols-outlined text-[26px] ${currentScreen === 'profile' ? 'fill-current' : ''}`}>person</span>
               <span className="text-[10px] font-bold">Profile</span>

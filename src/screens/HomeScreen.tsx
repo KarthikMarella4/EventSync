@@ -404,37 +404,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
   // Progress ring helper
   const taskProgress = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0;
-  const circumference = 2 * Math.PI * 40; // radius 40
-  const strokeDashoffset = circumference - (taskProgress / 100) * circumference;
-
-  // Wave SVG component
-  const WaveDivider = ({ flip = false, color = '#f0fdfa' }: { flip?: boolean; color?: string }) => (
-    <div className={`w-full overflow-hidden leading-[0] ${flip ? 'rotate-180' : ''}`}>
-      <svg viewBox="0 0 1200 80" preserveAspectRatio="none" className="w-full h-6 md:h-10">
-        <path d="M0,40 C150,80 350,0 600,40 C850,80 1050,0 1200,40 L1200,80 L0,80 Z" fill={color} />
-      </svg>
-    </div>
-  );
 
   return (
-    <div className="pb-24 relative max-w-7xl mx-auto w-full min-h-screen bg-[#fafffe] shadow-sm ring-1 ring-gray-100">
+    <div className="pb-24 relative max-w-7xl mx-auto w-full min-h-screen bg-[#0a0a0a] shadow-sm">
       {/* Delete Confirmation Modal */}
       {eventToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-100 animate-in zoom-in-95 duration-200 border border-white/10">
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="size-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center">
+              <div className="size-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[24px]">delete</span>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-black">Delete Event?</h3>
-                <p className="text-sm text-gray-500 font-medium">This action cannot be undone.</p>
+                <h3 className="text-lg font-bold text-white">Delete Event?</h3>
+                <p className="text-sm text-gray-400 font-medium">This action cannot be undone.</p>
               </div>
               <div className="grid grid-cols-2 gap-3 w-full mt-2">
                 <button
                   onClick={() => setEventToDelete(null)}
                   disabled={isDeleting}
-                  className="w-full py-3 rounded-xl font-bold text-black bg-gray-100 hover:bg-gray-200 transition-colors"
+                  className="w-full py-3 rounded-xl font-bold text-white bg-white/10 hover:bg-white/15 transition-colors border border-white/5"
                 >
                   Cancel
                 </button>
@@ -454,20 +443,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
       {/* Calendar Modal */}
       {isCalendarOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh] border border-white/10">
             <div className="flex items-center justify-between mb-6 shrink-0">
-              <h3 className="text-lg font-bold text-black">
+              <h3 className="text-lg font-bold text-white">
                 {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
               </h3>
               <div className="flex gap-2">
-                <button onClick={viewPrevMonth} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                <button onClick={viewPrevMonth} className="p-1 hover:bg-white/10 rounded-full transition-colors text-gray-300">
                   <span className="material-symbols-outlined">chevron_left</span>
                 </button>
-                <button onClick={viewNextMonth} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                <button onClick={viewNextMonth} className="p-1 hover:bg-white/10 rounded-full transition-colors text-gray-300">
                   <span className="material-symbols-outlined">chevron_right</span>
                 </button>
-                <button onClick={() => setIsCalendarOpen(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors text-red-500">
+                <button onClick={() => setIsCalendarOpen(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors text-red-400">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
@@ -475,7 +464,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
             <div className="grid grid-cols-7 gap-1 text-center mb-2">
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                <div key={d} className="text-xs font-bold text-gray-400 py-1">{d}</div>
+                <div key={d} className="text-xs font-bold text-gray-500 py-1">{d}</div>
               ))}
             </div>
 
@@ -503,15 +492,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                       ${isSelected
                         ? 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white scale-110 shadow-lg shadow-teal-400/30 z-10'
                         : isToday
-                          ? 'bg-gray-200 text-black'
-                          : (hasActivity ? 'bg-gray-50 text-black font-bold' : 'hover:bg-gray-50 text-text-main')
+                          ? 'bg-white/10 text-white'
+                          : (hasActivity ? 'bg-white/5 text-white font-bold' : 'hover:bg-white/5 text-gray-400')
                       }
                     `}
                   >
                     <span>{day}</span>
                     <div className="flex gap-0.5 absolute bottom-1.5">
-                      {hasEvent && <div className="size-1 bg-teal-500 rounded-full"></div>}
-                      {hasTask && <div className="size-1 bg-emerald-500 rounded-full"></div>}
+                      {hasEvent && <div className="size-1 bg-teal-400 rounded-full"></div>}
+                      {hasTask && <div className="size-1 bg-emerald-400 rounded-full"></div>}
                     </div>
                   </button>
                 );
@@ -519,8 +508,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
             </div>
 
             {/* Selected Date Events */}
-            <div className="mt-6 pt-6 border-t border-gray-100 overflow-y-auto min-h-[100px]">
-              <h4 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">
+            <div className="mt-6 pt-6 border-t border-white/10 overflow-y-auto min-h-[100px]">
+              <h4 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider">
                 {selectedDate ? new Date(selectedDate).toLocaleDateString('default', { month: 'long', day: 'numeric' }) : 'Select a date'}
               </h4>
 
@@ -530,33 +519,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                   const dayTasks = tasks.filter(t => t.dueDate && t.dueDate.startsWith(selectedDate));
 
                   if (dayEvents.length === 0 && dayTasks.length === 0) {
-                    return <p className="text-sm text-gray-400 text-center py-4">No events or tasks scheduled.</p>;
+                    return <p className="text-sm text-gray-500 text-center py-4">No events or tasks scheduled.</p>;
                   }
 
                   return (
                     <div className="flex flex-col gap-3">
                       {dayEvents.map(event => (
-                        <div key={event.id} className="flex items-center gap-3 p-2 bg-white border border-gray-100 rounded-xl shadow-sm">
+                        <div key={event.id} className="flex items-center gap-3 p-2 bg-white/5 border border-white/5 rounded-xl">
                           <div
                             className="size-10 rounded-lg bg-cover bg-center shrink-0"
                             style={{ backgroundImage: `url("${event.imageUrl}")` }}
                           />
                           <div className="flex-1 min-w-0">
-                            <h5 className="text-sm font-bold text-black truncate">{event.title}</h5>
-                            <p className="text-xs text-teal-600 font-medium">{formatTime(event.time)} • Event</p>
+                            <h5 className="text-sm font-bold text-white truncate">{event.title}</h5>
+                            <p className="text-xs text-teal-400 font-medium">{formatTime(event.time)} • Event</p>
                           </div>
                         </div>
                       ))}
                       {dayTasks.map(task => (
-                        <div key={task.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                          <div className={`size-3 rounded-full border-[3px] ${task.isCompleted ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'}`} />
+                        <div key={task.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                          <div className={`size-3 rounded-full border-[3px] ${task.isCompleted ? 'bg-emerald-400 border-emerald-400' : 'border-gray-500'}`} />
                           <div className="flex-1 min-w-0">
-                            <h5 className={`text-sm font-bold truncate ${task.isCompleted ? 'text-gray-400 line-through' : 'text-black'}`}>{task.title}</h5>
-                            <p className="text-xs text-emerald-600 font-medium">Task</p>
+                            <h5 className={`text-sm font-bold truncate ${task.isCompleted ? 'text-gray-500 line-through' : 'text-white'}`}>{task.title}</h5>
+                            <p className="text-xs text-emerald-400 font-medium">Task</p>
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); confirmTaskDelete(task.id); }}
-                            className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors shrink-0"
+                            className="p-2 bg-red-500/10 text-red-400 rounded-full hover:bg-red-500/20 transition-colors shrink-0"
                             title="Delete Task"
                           >
                             <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -567,7 +556,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                   );
                 })()
               ) : (
-                <p className="text-sm text-gray-400 text-center py-4">Tap a date to see agenda.</p>
+                <p className="text-sm text-gray-500 text-center py-4">Tap a date to see agenda.</p>
               )}
             </div>
           </div>
@@ -580,36 +569,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       <div className="animate-gradient-bar h-[3px] w-full sticky top-0 z-50" />
 
       {/* ========================================= */}
-      {/* ✨ 2. GLASSMORPHISM HEADER                */}
+      {/* ✨ 2. DARK GLASSMORPHISM HEADER           */}
       {/* ========================================= */}
       <div className="sticky top-[3px] z-40">
         <div
-          className="mx-3 mt-3 rounded-2xl p-4 backdrop-blur-xl border border-white/40 shadow-lg"
-          style={{
-            background: 'linear-gradient(135deg, rgba(240,253,250,0.85) 0%, rgba(204,251,241,0.6) 50%, rgba(207,250,254,0.5) 100%)',
-          }}
+          className="mx-3 mt-3 rounded-2xl p-4 dark-glass-header shadow-lg"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
               <div className="relative">
                 <div
-                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 ring-2 ring-white/80 shadow-md"
+                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 ring-2 ring-white/20 shadow-md"
                   style={{ backgroundImage: `url("${user?.avatar || 'https://ui-avatars.com/api/?name=User'}")` }}
                 />
-                <div className="absolute bottom-0 right-0 size-3.5 bg-emerald-400 border-[2.5px] border-white rounded-full animate-pulse-dot"></div>
+                <div className="absolute bottom-0 right-0 size-3.5 bg-emerald-400 border-[2.5px] border-[#1a1a1a] rounded-full animate-pulse-dot"></div>
               </div>
               <div>
-                <p className="text-teal-700/70 text-xs font-semibold tracking-wide uppercase">Welcome back</p>
-                <h2 className="text-[#14312A] text-xl font-extrabold leading-tight">{user?.name}</h2>
+                <p className="text-gray-400 text-xs font-semibold tracking-wide uppercase">Welcome back</p>
+                <h2 className="text-white text-xl font-extrabold leading-tight">{user?.name}</h2>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className={`relative flex items-center justify-center rounded-full size-11 transition-all hover:scale-105 active:scale-95 shadow-sm ${showNotifications ? 'bg-[#14312A] text-white' : 'bg-white/80 text-[#14312A] border border-white/50'}`}
+                className={`relative flex items-center justify-center rounded-full size-11 transition-all hover:scale-105 active:scale-95 shadow-sm ${showNotifications ? 'bg-white text-black' : 'bg-white/10 text-white border border-white/10'}`}
               >
                 <span className="material-symbols-outlined text-[22px]">notifications</span>
-                <span className="absolute top-2 right-2.5 size-2 bg-red-500 rounded-full border border-white"></span>
+                <span className="absolute top-2 right-2.5 size-2 bg-red-500 rounded-full border border-[#1a1a1a]"></span>
               </button>
             </div>
           </div>
@@ -620,11 +606,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       {/* Search Bar */}
       <div className="px-5 mt-4">
         <div className="relative group">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-teal-600 transition-colors">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-teal-400 transition-colors">
             <span className="material-symbols-outlined">search</span>
           </span>
           <input
-            className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-400/40 text-text-main placeholder-text-muted transition-all shadow-sm font-medium"
+            className="w-full h-12 pl-12 pr-4 dark-search-input rounded-2xl text-white placeholder-gray-500 font-medium"
             placeholder="Search events..."
             type="text"
             value={searchQuery}
@@ -634,12 +620,93 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       </div>
 
       {/* ========================================= */}
+      {/* ✨ NEW: RADIANCE-STYLE VALUES SECTION     */}
+      {/* ========================================= */}
+      {!showAllFeatured && (
+        <section className="px-5 mt-10 animate-section-reveal">
+          <h2 className="text-[28px] font-extrabold text-white leading-tight mb-6 tracking-tight">
+            EventSync and Values
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Card 1: Ad-Free */}
+            <div className="dark-value-card animate-card-appear">
+              <div>
+                <div className="card-icon" style={{ border: '2px solid #22c55e' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#22c55e"/>
+                  </svg>
+                </div>
+                <p className="card-text">
+                  Made as a <span className="text-[#22c55e]">100% ad-free</span> experience with no interruptions.
+                </p>
+              </div>
+              <button className="card-expand-btn animate-ring-pulse" style={{ border: '2px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.4)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Card 2: Real People */}
+            <div className="dark-value-card animate-card-appear-delay-1">
+              <div>
+                <div className="card-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <circle cx="9" cy="7" r="2.5" stroke="#ef4444" strokeWidth="1.8" fill="none"/>
+                    <circle cx="15" cy="7" r="2.5" stroke="#ef4444" strokeWidth="1.8" fill="none"/>
+                    <path d="M4 18c0-3 2.5-5 5-5s5 2 5 5" stroke="#ef4444" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+                    <path d="M14 13c2.5 0 5 2 5 5" stroke="#ef4444" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <p className="card-text">
+                  Events synced by talented creators <span className="text-[#ef4444]">without</span> <span className="text-[#ef4444]">friction</span>.
+                </p>
+              </div>
+              <button className="card-expand-btn animate-ring-pulse" style={{ border: '2px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.4)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Card 3: Free & Community */}
+            <div className="dark-value-card animate-card-appear-delay-2">
+              <div>
+                <div className="card-icon" style={{ border: '2px solid #22c55e', borderRadius: '50%' }}>
+                  <span className="text-[#22c55e] text-lg font-bold">$</span>
+                </div>
+                <p className="card-text">
+                  EventSync is <span className="text-[#22c55e]">free</span>, and funded by the community.
+                </p>
+              </div>
+              <button className="card-expand-btn animate-ring-pulse" style={{ border: '2px solid #22c55e', color: '#22c55e' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ========================================= */}
+      {/* ✨ NEW: ONE APP SECTION HEADING            */}
+      {/* ========================================= */}
+      {!showAllFeatured && (
+        <section className="px-5 mt-14 mb-8">
+          <h2 className="text-[28px] font-extrabold text-white leading-tight tracking-tight">
+            One App, Unlimited Combinations
+          </h2>
+        </section>
+      )}
+
+      {/* ========================================= */}
       {/* ✨ 10. HERO BANNER CAROUSEL (Happening Today) */}
       {/* ========================================= */}
       {!showAllFeatured && upcomingToday.length > 0 && (
-        <section className="px-4 mt-6">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Happening Today</h3>
-          <div className="relative overflow-hidden rounded-3xl shadow-xl shadow-teal-900/10" style={{ minHeight: 200 }}>
+        <section className="px-4 mt-2">
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 px-1">Happening Today</h3>
+          <div className="relative overflow-hidden rounded-3xl shadow-xl shadow-black/30" style={{ minHeight: 200 }}>
             {upcomingToday.map((event, idx) => (
               <div
                 key={event.id}
@@ -649,10 +716,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                   className="absolute inset-0 bg-cover bg-center"
                   style={{ backgroundImage: `url("${event.imageUrl}")` }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#14312A]/90 via-[#14312A]/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 w-full p-6 text-white">
                   <h4 className="text-2xl font-extrabold leading-tight mb-1">{event.title}</h4>
-                  <div className="flex items-center gap-4 text-white/80 text-xs font-medium">
+                  <div className="flex items-center gap-4 text-white/70 text-xs font-medium">
                     <div className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[14px]">schedule</span>
                       <span>{formatTime(event.time)}</span>
@@ -686,31 +753,31 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       {/* Featured Events */}
       <section className="mt-6">
         <div className="flex items-center justify-between px-5 mb-4">
-          <h2 className="text-xl font-bold text-text-main">Featured Events</h2>
+          <h2 className="text-xl font-bold text-white">Featured Events</h2>
           <button
             onClick={() => setShowAllFeatured(!showAllFeatured)}
-            className="text-sm font-bold text-teal-700 hover:text-teal-900 transition-colors flex items-center gap-0.5"
+            className="text-sm font-bold text-teal-400 hover:text-teal-300 transition-colors flex items-center gap-0.5"
           >
             {showAllFeatured ? 'Show Less' : 'See All'} <span className="material-symbols-outlined text-[16px]">{showAllFeatured ? 'expand_less' : 'chevron_right'}</span>
           </button>
         </div>
 
         {featuredEvents.length === 0 ? (
-          <div className="px-5 text-gray-400 text-sm">No events found.</div>
+          <div className="px-5 text-gray-500 text-sm">No events found.</div>
         ) : (
           <div className={`px-5 ${showAllFeatured ? 'grid grid-cols-1 gap-5' : 'flex overflow-x-auto hide-scrollbar gap-5 pb-4 snap-x snap-mandatory'}`}>
             {featuredEvents.map((event) => (
-              <div key={event.id} className={`snap-center shrink-0 ${showAllFeatured ? 'w-full' : 'w-[88%] max-w-[340px]'} relative aspect-[16/10] group cursor-pointer shadow-lg shadow-teal-900/10 hover:shadow-xl transition-all duration-300 active:scale-95`}>
+              <div key={event.id} className={`snap-center shrink-0 ${showAllFeatured ? 'w-full' : 'w-[88%] max-w-[340px]'} relative aspect-[16/10] group cursor-pointer shadow-lg shadow-black/30 hover:shadow-xl transition-all duration-300 active:scale-95`}>
                 <div className="absolute inset-0 rounded-3xl overflow-hidden transform-gpu">
                   <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 group-active:scale-110"
                     style={{ backgroundImage: `url("${event.imageUrl}")` }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#14312A]/80 via-[#14312A]/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                   <div className="absolute bottom-0 left-0 w-full p-5 flex flex-col gap-1.5">
                     <h3 className="text-white text-2xl font-bold leading-tight">{event.title}</h3>
-                    <div className="flex items-center gap-4 text-white/90 text-xs font-medium">
+                    <div className="flex items-center gap-4 text-white/80 text-xs font-medium">
                       <div className="flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                         <span>{event.date} • {formatTime(event.time)}</span>
@@ -736,7 +803,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
                   <div className="absolute top-4 right-4 flex items-center gap-2 pointer-events-auto">
                     <ReminderButton eventId={event.id} googleEventId={event.googleCalendarEventId} />
-                    <div className="bg-[#14312A]/40 backdrop-blur-md border border-white/20 text-white size-8 flex items-center justify-center rounded-full">
+                    <div className="bg-black/40 backdrop-blur-md border border-white/20 text-white size-8 flex items-center justify-center rounded-full">
                       <span className="material-symbols-outlined text-[18px]">favorite</span>
                     </div>
                   </div>
@@ -748,40 +815,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       </section>
 
       {/* ========================================= */}
-      {/* ✨ 6. WAVE SECTION DIVIDER                */}
-      {/* ========================================= */}
-      {!showAllFeatured && <div className="mt-2"><WaveDivider color="#f0fdfa" /></div>}
-
-      {/* ========================================= */}
       {/* ✨ 7. QUICK ACTIONS AS FLOATING BUBBLES   */}
       {/* ========================================= */}
       {!showAllFeatured && (
-        <section className="px-5 py-4 bg-gradient-to-b from-[#f0fdfa] to-[#fafffe]">
-          <h3 className="text-text-main text-lg font-bold mb-5">Quick Actions</h3>
+        <section className="px-5 py-8 mt-4">
+          <h3 className="text-white text-lg font-bold mb-5">Quick Actions</h3>
           <div className="grid grid-cols-3 gap-6 place-items-center">
             <button onClick={() => setIsCalendarOpen(true)} className="flex flex-col items-center gap-2.5 group animate-bubble">
-              <div className="size-[68px] rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-teal-400/30 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+              <div className="size-[68px] rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-teal-400/20 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
                 <span className="material-symbols-outlined text-[28px]">calendar_month</span>
               </div>
-              <span className="text-xs font-semibold text-[#14312A]">Calendar</span>
+              <span className="text-xs font-semibold text-gray-300">Calendar</span>
             </button>
             <button onClick={() => setShowTicketsModal(true)} className="flex flex-col items-center gap-2.5 group animate-bubble animate-bubble-delay-1">
-              <div className="size-[68px] rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-400/30 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+              <div className="size-[68px] rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-400/20 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
                 <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
               </div>
-              <span className="text-xs font-semibold text-[#14312A]">Tickets</span>
+              <span className="text-xs font-semibold text-gray-300">Tickets</span>
             </button>
             <button className="flex flex-col items-center gap-2.5 group animate-bubble animate-bubble-delay-2">
-              <div className="size-[68px] rounded-full bg-gradient-to-br from-violet-400 to-purple-500 text-white flex items-center justify-center shadow-lg shadow-violet-400/30 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+              <div className="size-[68px] rounded-full bg-gradient-to-br from-violet-400 to-purple-500 text-white flex items-center justify-center shadow-lg shadow-violet-400/20 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
                 <span className="material-symbols-outlined text-[28px]">groups</span>
               </div>
-              <span className="text-xs font-semibold text-[#14312A]">Invites</span>
+              <span className="text-xs font-semibold text-gray-300">Invites</span>
             </button>
           </div>
         </section>
       )}
-
-      {!showAllFeatured && <WaveDivider flip color="#f0fdfa" />}
 
       {/* ========================================= */}
       {/* ✨ 5. STATS DASHBOARD STRIP               */}
@@ -789,26 +849,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       {!showAllFeatured && (
         <section className="px-4 mt-2 animate-fade-slide-up">
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-100/60 rounded-2xl p-3.5 text-center">
+            <div className="dark-stat-card">
               <div className="flex justify-center mb-1.5">
-                <span className="material-symbols-outlined text-[22px] text-teal-600">event</span>
+                <span className="material-symbols-outlined text-[22px] text-teal-400">event</span>
               </div>
-              <p className="text-2xl font-extrabold text-[#14312A]">{stats.eventsThisWeek}</p>
-              <p className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider mt-0.5">This Week</p>
+              <p className="text-2xl font-extrabold text-white">{stats.eventsThisWeek}</p>
+              <p className="text-[10px] font-semibold text-teal-400 uppercase tracking-wider mt-0.5">This Week</p>
             </div>
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100/60 rounded-2xl p-3.5 text-center">
+            <div className="dark-stat-card">
               <div className="flex justify-center mb-1.5">
-                <span className="material-symbols-outlined text-[22px] text-amber-600">task_alt</span>
+                <span className="material-symbols-outlined text-[22px] text-amber-400">task_alt</span>
               </div>
-              <p className="text-2xl font-extrabold text-[#14312A]">{stats.pendingTasks}</p>
-              <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-0.5">Pending</p>
+              <p className="text-2xl font-extrabold text-white">{stats.pendingTasks}</p>
+              <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mt-0.5">Pending</p>
             </div>
-            <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/60 rounded-2xl p-3.5 text-center">
+            <div className="dark-stat-card">
               <div className="flex justify-center mb-1.5">
-                <span className="material-symbols-outlined text-[22px] text-emerald-600">check_circle</span>
+                <span className="material-symbols-outlined text-[22px] text-emerald-400">check_circle</span>
               </div>
-              <p className="text-2xl font-extrabold text-[#14312A]">{stats.completedTasks}</p>
-              <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mt-0.5">Done</p>
+              <p className="text-2xl font-extrabold text-white">{stats.completedTasks}</p>
+              <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mt-0.5">Done</p>
             </div>
           </div>
         </section>
@@ -836,22 +896,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                   onClick={() => setSelectedDate(dateStr)}
                   className={`snap-center shrink-0 flex flex-col items-center gap-1 px-3 py-2.5 rounded-2xl min-w-[52px] transition-all duration-200
                     ${isSelected
-                      ? 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white shadow-lg shadow-teal-400/30 scale-105'
+                      ? 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white shadow-lg shadow-teal-400/20 scale-105'
                       : isToday
-                        ? 'bg-teal-50 text-[#14312A] border border-teal-200'
-                        : 'bg-white text-gray-600 border border-gray-100 hover:border-teal-200'
+                        ? 'bg-white/10 text-white border border-white/15'
+                        : 'bg-[#1a1a1a] text-gray-400 border border-white/5 hover:border-white/15'
                     }
                   `}
                 >
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-teal-300' : 'text-gray-400'}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-teal-200' : 'text-gray-500'}`}>
                     {dayNames[d.getDay()]}
                   </span>
                   <span className={`text-lg font-extrabold ${isSelected ? 'text-white' : ''}`}>
                     {d.getDate()}
                   </span>
                   <div className="flex gap-1">
-                    {hasEvent && <div className={`size-1.5 rounded-full ${isSelected ? 'bg-teal-300' : 'bg-teal-500'}`}></div>}
-                    {hasTask && <div className={`size-1.5 rounded-full ${isSelected ? 'bg-emerald-300' : 'bg-emerald-500'}`}></div>}
+                    {hasEvent && <div className={`size-1.5 rounded-full ${isSelected ? 'bg-teal-200' : 'bg-teal-400'}`}></div>}
+                    {hasTask && <div className={`size-1.5 rounded-full ${isSelected ? 'bg-emerald-200' : 'bg-emerald-400'}`}></div>}
                   </div>
                 </button>
               );
@@ -866,16 +926,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
       {!showAllFeatured && (
         <section className="px-5 mt-4">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-xl font-bold text-text-main">Tasks & Agenda</h3>
-            <button className="text-sm font-bold text-teal-700 hover:text-teal-900 transition-colors">View All</button>
+            <h3 className="text-xl font-bold text-white">Tasks & Agenda</h3>
+            <button className="text-sm font-bold text-teal-400 hover:text-teal-300 transition-colors">View All</button>
           </div>
 
           {/* Progress Ring + Summary */}
           {stats.totalTasks > 0 && (
-            <div className="flex items-center gap-5 mb-5 p-4 bg-gradient-to-r from-teal-50/80 to-cyan-50/60 rounded-2xl border border-teal-100/50">
+            <div className="flex items-center gap-5 mb-5 p-4 bg-[#1a1a1a] rounded-2xl border border-white/5">
               <div className="relative shrink-0">
                 <svg width="80" height="80" className="transform -rotate-90">
-                  <circle cx="40" cy="40" r="34" stroke="#e2e8f0" strokeWidth="6" fill="none" />
+                  <circle cx="40" cy="40" r="34" stroke="#2a2a2a" strokeWidth="6" fill="none" />
                   <circle
                     cx="40" cy="40" r="34"
                     stroke="#0d9488"
@@ -888,14 +948,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-extrabold text-[#14312A]">{Math.round(taskProgress)}%</span>
+                  <span className="text-lg font-extrabold text-white">{Math.round(taskProgress)}%</span>
                 </div>
               </div>
               <div>
-                <p className="text-[#14312A] font-bold text-base">
+                <p className="text-white font-bold text-base">
                   {stats.completedTasks} of {stats.totalTasks} tasks done
                 </p>
-                <p className="text-teal-600 text-sm font-medium mt-0.5">
+                <p className="text-teal-400 text-sm font-medium mt-0.5">
                   {stats.pendingTasks === 0 ? '🎉 All caught up!' : `${stats.pendingTasks} task${stats.pendingTasks > 1 ? 's' : ''} remaining`}
                 </p>
               </div>
@@ -904,7 +964,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
           <div className="flex flex-col gap-3">
             {tasks.filter(t => !t.isCompleted).length === 0 ? (
-              <p className="text-gray-400 text-sm">No tasks pending. Great job! 🎉</p>
+              <p className="text-gray-500 text-sm">No tasks pending. Great job! 🎉</p>
             ) : (
               tasks.filter(t => !t.isCompleted).slice(0, 3).map(task => (
                 <TaskItem
@@ -923,11 +983,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
 
       {/* Recommended (at very bottom) */}
       {!showAllFeatured && recommendedEvents.length > 0 && (
-        <section className="px-5 mt-8 border-t border-gray-100 pt-8">
-          <h3 className="text-lg font-bold text-text-main mb-5">Recommended For You</h3>
+        <section className="px-5 mt-8 border-t border-white/5 pt-8">
+          <h3 className="text-lg font-bold text-white mb-5">Recommended For You</h3>
           <div className="flex flex-col gap-4">
             {recommendedEvents.map((event) => (
-              <div key={event.id} className="bg-white p-3 rounded-2xl flex gap-4 shadow-soft border border-border-light hover:border-teal-200/50 transition-colors cursor-pointer group">
+              <div key={event.id} className="bg-[#1a1a1a] p-3 rounded-2xl flex gap-4 border border-white/5 hover:border-white/10 transition-colors cursor-pointer group">
                 <div
                   className="w-24 aspect-square rounded-xl bg-cover bg-center shrink-0 relative overflow-hidden"
                   style={{ backgroundImage: `url("${event.imageUrl}")` }}
@@ -935,11 +995,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                 <div className="flex flex-col justify-between py-1 flex-1">
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${event.category === 'Wellness' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-teal-700 bg-teal-50 border border-teal-100'
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${event.category === 'Wellness' ? 'text-emerald-400 bg-emerald-400/10 border border-emerald-400/20' : 'text-teal-400 bg-teal-400/10 border border-teal-400/20'
                         }`}>
                         {event.category}
                       </span>
-                      <span className="text-[11px] font-medium text-text-muted flex items-center gap-1">
+                      <span className="text-[11px] font-medium text-gray-500 flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px]">near_me</span>
                         {event.distance}
                       </span>
@@ -950,33 +1010,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, initialSelectedDate
                         {user?.id === event.creatorId && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setEventToDelete(event.id); }}
-                            className="text-red-500 hover:text-red-700 p-1"
+                            className="text-red-400 hover:text-red-300 p-1"
                           >
                             <span className="material-symbols-outlined text-[16px]">delete</span>
                           </button>
                         )}
                       </div>
                     </div>
-                    <h4 className="text-text-main font-bold text-[15px] leading-snug line-clamp-2">{event.title}</h4>
-                    <p className="text-text-muted text-xs font-medium mt-1">{event.date} • {formatTime(event.time)}</p>
+                    <h4 className="text-white font-bold text-[15px] leading-snug line-clamp-2">{event.title}</h4>
+                    <p className="text-gray-500 text-xs font-medium mt-1">{event.date} • {formatTime(event.time)}</p>
                   </div>
                   {event.attendeesCount && (
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex -space-x-2 overflow-hidden">
                         {event.attendeesAvatars?.map((av, i) => (
-                          <img key={i} src={av} className="inline-block size-5 rounded-full ring-2 ring-white object-cover" alt="User" />
+                          <img key={i} src={av} className="inline-block size-5 rounded-full ring-2 ring-[#1a1a1a] object-cover" alt="User" />
                         ))}
                       </div>
-                      <span className="text-[10px] text-text-muted font-semibold">+{event.attendeesCount} going</span>
+                      <span className="text-[10px] text-gray-500 font-semibold">+{event.attendeesCount} going</span>
                     </div>
                   )}
                   {event.id === 'r2' && (
                     <div className="flex items-center gap-1.5 mt-2">
-                      <span className="text-[10px] text-text-main font-semibold flex items-center gap-1 bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
-                        <span className="material-symbols-outlined text-[12px] text-amber-500 fill-amber-500">star</span>
+                      <span className="text-[10px] text-white font-semibold flex items-center gap-1 bg-yellow-500/10 px-1.5 py-0.5 rounded-md border border-yellow-500/20">
+                        <span className="material-symbols-outlined text-[12px] text-amber-400 fill-amber-400">star</span>
                         4.9
                       </span>
-                      <span className="text-[10px] text-text-muted">(120 reviews)</span>
+                      <span className="text-[10px] text-gray-500">(120 reviews)</span>
                     </div>
                   )}
                 </div>
